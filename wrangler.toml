@@ -1,0 +1,28 @@
+# Cloudflare Worker: serves the React app (dist/) and the API (/api/*).
+name = "flonary"
+main = "worker/index.ts"
+compatibility_date = "2026-10-01"
+compatibility_flags = ["nodejs_compat"]
+
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+run_worker_first = ["/api/*"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "flonary"
+database_id = "b9581bdf-98d6-4091-9233-795285cddf7d"
+migrations_dir = "migrations"
+
+[vars]
+# "true" lets anyone create an account. When "false", only the very first account can be created.
+ALLOW_SIGNUP = "false"
+
+# Secrets (set with `npx wrangler secret put NAME`, or in .dev.vars locally):
+#   SECRETS_KEY         — random string, encrypts broker tokens stored in D1 (recommended)
+#   TWELVEDATA_API_KEY  — optional fallback price provider (free tier: https://twelvedata.com)
+
+[observability]
+enabled = true

@@ -60,7 +60,8 @@ export interface Backend {
   deleteManualPrice(symbol: string, date: string): Promise<void>;
   restore(data: UserData): Promise<void>;
 
-  history(symbols: string[]): Promise<Record<string, PriceHistory>>;
+  /** Daily history since `from` (raw closes + dividends + splits) */
+  history(symbols: string[], from: string): Promise<Record<string, PriceHistory>>;
   quotes(symbols: string[]): Promise<Record<string, Quote>>;
   fx(currencies: string[], from: string): Promise<Record<string, Point[]>>;
   search(q: string): Promise<SearchResult[]>;

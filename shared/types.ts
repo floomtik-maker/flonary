@@ -67,8 +67,14 @@ export interface PriceHistory {
   currency: string;
   /** Daily closes, ascending */
   points: Point[];
-  /** Dividends per share [exDate, amount], ascending */
+  /** Dividends per share [exDate, amount], ascending (same share basis as `points`) */
   dividends?: Point[];
+  /**
+   * Stock splits [date, ratio] (ratio = new shares per old share, e.g. 4 for a 4-for-1).
+   * `points` are RAW closes (not split-adjusted): the engine multiplies held quantities
+   * on the split date, so user transactions can stay exactly as the broker reported them.
+   */
+  splits?: Point[];
 }
 
 export interface Quote {

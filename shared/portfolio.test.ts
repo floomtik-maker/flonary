@@ -171,6 +171,25 @@ describe('computePortfolio', () => {
     expect(perf.gain).toBeCloseTo(1000);
   });
 
+  it('handles stock splits on raw prices', () => {
+    const r = computePortfolio({
+      transactions: [tx({ date: '2025-01-02', quantity: 10, price: 400 }), tx({ date: '2025-03-03', quantity: 5, price: 110 })],
+      instruments,
+      prices: {
+        AAA: { symbol: 'AAA', currency: 'EUR', points: [['2025-01-02', 400], ['2025-02-27', 420], ['2025-03-03', 110], ['2025-04-01', 120]], splits: [['2025-03-03', 4]] },
+      },
+      fx: {},
+      today: '2025-04-01',
+    });
+    const p = r.positions[0];
+    expect(p.quantity).toBe(45);
+    expect(p.avgPrice).toBeCloseTo((4000 + 550) / 45);
+    expect(p.valueEUR).toBeCloseTo(45 * 120);
+    // no jump in value on the split date
+    const before = r.series.find((s) => s.date === '2025-02-27')!;
+    expect(before.value).toBeCloseTo(4200);
+  });
+
   it('sorts same-day transactions: sells before buys', () => {
     const s = sortTransactions([
       tx({ date: '2025-01-02', type: 'BUY' }),

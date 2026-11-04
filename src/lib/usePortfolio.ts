@@ -4,7 +4,7 @@ import { useBackend } from '../api';
 import { computePortfolio, type PortfolioResult } from '../../shared/portfolio';
 import { BASE_CURRENCY, type Instrument, type PriceHistory, type Quote } from '../../shared/types';
 import type { UserData } from '../api/backend';
-import { toISODate } from '../../shared/series';
+import { addDays, toISODate } from '../../shared/series';
 
 export interface PortfolioState {
   data: UserData;
@@ -49,8 +49,9 @@ export function usePortfolio(): { state: PortfolioState | null; loading: boolean
   const firstDate = useMemo(() => (data?.transactions ?? []).reduce((m, t) => (t.date < m ? t.date : m), today), [data, today]);
 
   const histQ = useQuery({
-    queryKey: ['history', marketSymbols],
-    queryFn: () => backend.history(marketSymbols),
+    // 400 extra days so the 200-day moving average exists from the first purchase
+    queryKey: ['history', marketSymbols, firstDate],
+    queryFn: () => backend.history(marketSymbols, addDays(firstDate, -400)),
     enabled: !!data,
     staleTime: 60 * 60_000,
   });

@@ -228,6 +228,16 @@ class Ledger {
     }
   }
 
+  /** Stock split: quantities are multiplied, total cost is unchanged. */
+  split(symbol: string, ratio: number) {
+    if (!(ratio > 0)) return;
+    for (const l of this.lots.values()) {
+      if (l.symbol !== symbol) continue;
+      l.qty *= ratio;
+      l.lastTradePrice /= ratio;
+    }
+  }
+
   totalContrib() {
     let s = 0;
     for (const v of this.contrib.values()) s += v;
@@ -278,12 +288,23 @@ export function computePortfolio(input: EngineInput): PortfolioResult {
       [today],
     );
     // Include the day before the first transaction as a zero point for nicer charts.
+    const splitEvents = Object.values(prices)
+      .flatMap((h) => (h.splits ?? []).map(([date, ratio]) => ({ date, ratio, symbol: h.symbol })))
+      .filter((e) => e.date > start && e.date <= today)
+      .sort((a, b) => (a.date < b.date ? -1 : 1));
+    let si = 0;
     let i = 0;
     let prevValue = 0;
     let twr = 1;
     series.push({ date: addDays(start, -1), value: 0, contributions: 0, gain: 0, twr: 1 });
     for (const d of dates) {
       let flow = 0;
+      // Splits take effect at the open of their date, before that day's trades.
+      while (si < splitEvents.length && splitEvents[si].date <= d) {
+        const e = splitEvents[si++];
+        while (i < txs.length && txs[i].date < e.date) flow += ledger.apply(txs[i++]);
+        ledger.split(e.symbol, e.ratio);
+      }
       while (i < txs.length && txs[i].date <= d) flow += ledger.apply(txs[i++]);
       let holdings = 0;
       for (const l of ledger.lots.values()) {

@@ -56,7 +56,7 @@ export const httpBackend: Backend = {
   deleteManualPrice: (symbol, date) => call('DELETE', '/manual-prices' + q({ symbol, date })),
   restore: (data) => call('POST', '/restore', data),
 
-  history: (symbols) => (symbols.length ? call('GET', '/market/history' + q({ symbols: symbols.join(',') })) : Promise.resolve({})),
+  history: (symbols, from) => (symbols.length ? call('GET', '/market/history' + q({ symbols: symbols.join(','), from })) : Promise.resolve({})),
   quotes: (symbols) => (symbols.length ? call('GET', '/market/quotes' + q({ symbols: symbols.join(',') })) : Promise.resolve({})),
   fx: (currencies, from) =>
     currencies.length ? call('GET', '/market/fx' + q({ currencies: currencies.join(','), from })) : Promise.resolve({}),
