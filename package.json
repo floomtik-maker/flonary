@@ -1,0 +1,40 @@
+{
+  "name": "flonary",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:demo": "VITE_DEMO=1 vite",
+    "dev:worker": "wrangler dev",
+    "build": "tsc -b && vite build",
+    "build:demo": "VITE_DEMO=1 VITE_SINGLEFILE=1 vite build --outDir dist-demo",
+    "typecheck": "tsc -b",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:migrate:local": "wrangler d1 migrations apply flonary --local",
+    "db:migrate:remote": "wrangler d1 migrations apply flonary --remote",
+    "deploy": "npm run build && wrangler d1 migrations apply flonary --remote && wrangler deploy",
+    "check": "npm run typecheck && npm run test"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.106.0",
+    "hono": "^4.13.16",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.30.6",
+    "recharts": "^2.15.4"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261104.1",
+    "@types/node": "^22.20.5",
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
+    "@vitejs/plugin-react": "^4.7.0",
+    "typescript": "^5.9.3",
+    "vite": "^6.4.5",
+    "vite-plugin-singlefile": "^2.3.4",
+    "vitest": "^3.2.7",
+    "wrangler": "^4.157.0"
+  }
+}
