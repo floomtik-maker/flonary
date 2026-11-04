@@ -32,7 +32,7 @@ export function upcomingEvents(opts: {
 
   for (const p of positions) {
     const announced = (profiles[p.symbol]?.events ?? []).filter((e) => e.date >= today && e.date <= end);
-    const hasAnnouncedDiv = announced.some((e) => e.kind === 'ex_dividend');
+    const announcedDivDates = announced.filter((e) => e.kind === 'ex_dividend').map((e) => e.date);
     const lastDiv = histories[p.symbol]?.dividends?.at(-1);
     for (const e of announced) {
       const amount = e.amount ?? (e.kind !== 'earnings' ? lastDiv?.[1] : undefined) ?? null;
@@ -44,7 +44,7 @@ export function upcomingEvents(opts: {
         expectedEUR: e.kind === 'ex_dividend' && amount ? amount * p.quantity * fxToEUR(p.currency) : null,
       });
     }
-    if (!hasAnnouncedDiv) {
+    {
       const divs = histories[p.symbol]?.dividends ?? [];
       const yearAgo = addDays(today, -365);
       for (const [d, amount] of divs) {
@@ -54,6 +54,8 @@ export function upcomingEvents(opts: {
         if (next > end) continue;
         // skip if an actual dividend already happened close to that date
         if (divs.some(([d2]) => Math.abs(daysBetween(d2, next)) < 20)) continue;
+        // already announced (exact date known)
+        if (announcedDivDates.some((d2) => Math.abs(daysBetween(d2, next)) < 45)) continue;
         out.push({
           symbol: p.symbol,
           name: p.name,

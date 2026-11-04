@@ -65,7 +65,7 @@ const SYNONYMS: Record<Field, string[]> = {
   type: ['type', 'sens', 'operation', 'opération', 'buy/sell', 'buysell', 'typ', 'action', 'side', 'transaction type'],
   symbol: ['symbol', 'ticker', 'symbole', 'code', 'mnémo', 'mnemo'],
   isin: ['isin', 'code isin'],
-  name: ['name', 'nom', 'libellé', 'libelle', 'description', 'titre', 'instrument', 'produit', 'product'],
+  name: ['name', 'nom', 'libellé', 'libelle', 'description', 'titre', 'instrument', 'produit', 'product', 'note'],
   quantity: ['quantity', 'quantité', 'quantite', 'qty', 'shares', 'stück', 'stuck', 'nombre', 'parts', 'nb parts'],
   price: ['price', 'prix', 'tradeprice', 'cours', 'prix unitaire', 'unit price', 'kurs', 't. price', 'valeur liquidative'],
   fees: ['fees', 'frais', 'commission', 'ibcommission', 'gebühren', 'gebuhren', 'comm/fee', 'courtage'],

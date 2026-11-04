@@ -47,3 +47,24 @@ describe('analysis', () => {
     expect(g.at(-1)!.value).toBeCloseTo(1000 * 1.07 ** 10, 3);
   });
 });
+
+import { upcomingEvents } from './calendar';
+describe('calendar', () => {
+  it('estimates next dividends from last year and keeps announced ones', () => {
+    const ev = upcomingEvents({
+      positions: [{ symbol: 'X', name: 'X', quantity: 10, currency: 'EUR' }],
+      histories: { X: { symbol: 'X', currency: 'EUR', points: [], dividends: [['2025-02-10', 1], ['2025-05-10', 1], ['2025-08-10', 1], ['2025-11-10', 1]] } },
+      profiles: { X: { symbol: 'X', events: [{ symbol: 'X', date: '2026-02-12', kind: 'ex_dividend', amount: 1.1 }] } },
+      fxToEUR: () => 1,
+      today: '2026-01-15',
+    });
+    const divs = ev.filter((e) => e.kind === 'ex_dividend');
+    expect(divs.map((e) => [e.date, !!e.estimated])).toEqual([
+      ['2026-02-12', false],
+      ['2026-05-10', true],
+      ['2026-08-10', true],
+      ['2026-11-10', true],
+    ]);
+    expect(divs[0].expectedEUR).toBeCloseTo(11);
+  });
+});

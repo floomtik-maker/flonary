@@ -270,9 +270,6 @@ textarea {
   padding: 20px;
   min-width: 0;
 }
-.card + .card {
-  margin-top: 16px;
-}
 .card-title {
   font-size: 15px;
   font-weight: 600;
@@ -778,7 +775,8 @@ ul.reasons {
   color: var(--text-2);
   font-size: 14px;
 }
-.show-mobile {
+.show-mobile,
+.show-mobile-inline {
   display: none;
 }
 @media (max-width: 760px) {
@@ -787,5 +785,8 @@ ul.reasons {
   }
   .show-mobile {
     display: flex;
+  }
+  .show-mobile-inline {
+    display: inline;
   }
 }

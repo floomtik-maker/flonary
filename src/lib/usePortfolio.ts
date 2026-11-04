@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useBackend } from '../api';
 import { computePortfolio, type PortfolioResult } from '../../shared/portfolio';
 import { BASE_CURRENCY, type Instrument, type PriceHistory, type Quote } from '../../shared/types';
@@ -54,12 +54,16 @@ export function usePortfolio(): { state: PortfolioState | null; loading: boolean
     queryFn: () => backend.history(marketSymbols, addDays(firstDate, -400)),
     enabled: !!data,
     staleTime: 60 * 60_000,
+    // keep showing the previous figures while a new symbol loads (no skeleton flash)
+    placeholderData: keepPreviousData,
   });
   const quotesQ = useQuery({
     queryKey: ['quotes', marketSymbols],
     queryFn: () => backend.quotes(marketSymbols),
     enabled: !!data,
     staleTime: 5 * 60_000,
+    // keep showing the previous figures while a new symbol loads (no skeleton flash)
+    placeholderData: keepPreviousData,
     refetchInterval: 5 * 60_000,
   });
   const fxQ = useQuery({
@@ -67,6 +71,8 @@ export function usePortfolio(): { state: PortfolioState | null; loading: boolean
     queryFn: () => backend.fx(currencies, firstDate),
     enabled: !!data,
     staleTime: 6 * 60 * 60_000,
+    // keep showing the previous figures while a new symbol loads (no skeleton flash)
+    placeholderData: keepPreviousData,
   });
 
   const state = useMemo<PortfolioState | null>(() => {

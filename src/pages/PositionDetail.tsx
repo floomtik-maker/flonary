@@ -9,6 +9,7 @@ import { dividendYield, upcomingEvents } from '../../shared/calendar';
 import { addMonths, toISODate, valueAtOrFirst } from '../../shared/series';
 import type { AssetClass, Instrument } from '../../shared/types';
 import { PriceChart } from '../components/PriceChart';
+import { TransactionForm } from '../components/TransactionForm';
 import { Avatar, Gain, Modal, PageLoading, Segmented } from '../components/ui';
 import { IconBack } from '../components/Icons';
 import { ASSET_CLASS_LABELS, TX_LABELS, date, eur, money, pct, qty } from '../lib/format';
@@ -22,6 +23,7 @@ export function PositionDetail() {
   const { profiles } = useProfiles([symbol]);
   const [range, setRange] = useState<Range>('1Y');
   const [editing, setEditing] = useState(false);
+  const [addingTx, setAddingTx] = useState(false);
 
   const hist = state?.histories[symbol];
   const position = state?.result.positions.find((p) => p.symbol === symbol) ?? state?.result.closedPositions.find((p) => p.symbol === symbol);
@@ -64,9 +66,14 @@ export function PositionDetail() {
             </div>
           </div>
         </div>
-        <button className="btn small" onClick={() => setEditing(true)}>
-          Modifier la fiche
-        </button>
+        <div className="toolbar">
+          <button className="btn small" onClick={() => setEditing(true)}>
+            Modifier la fiche
+          </button>
+          <button className="btn small primary" onClick={() => setAddingTx(true)}>
+            + Achat / vente
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-main">
@@ -227,6 +234,15 @@ export function PositionDetail() {
         </div>
       </div>
       {editing && <InstrumentEditor instrument={inst} onClose={() => setEditing(false)} />}
+      {addingTx && (
+        <TransactionForm
+          accounts={state.data.accounts}
+          instruments={state.data.instruments}
+          defaultSymbol={symbol}
+          defaultAccountId={position.accounts[0]}
+          onClose={() => setAddingTx(false)}
+        />
+      )}
     </>
   );
 }

@@ -33,6 +33,9 @@ export function Dashboard() {
     <>
       <div className="page-head">
         <h1>Synthèse</h1>
+        <Link className="btn primary" to="/mouvements?new=1">
+          + Opération
+        </Link>
       </div>
       <div className="grid grid-main">
         <div className="stack">

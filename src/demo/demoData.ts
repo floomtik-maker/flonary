@@ -162,13 +162,26 @@ export function buildDemoData(today = toISODate(new Date())): UserData {
   ];
   const txs: Transaction[] = [];
   let id = 0;
-  const trade = (account_id: string, type: 'BUY' | 'SELL', symbol: string, date: string, quantity: number, fees = 1) => {
+  const trade = (account_id: string, type: 'BUY' | 'SELL', symbol: string, date: string, quantity: number, fees = 1, buyTheDipDays = 0) => {
     let d = bday(date);
-    // Demo storytelling: sales happen near a local high (within ±45 days of the planned date)
+    if (type === 'BUY' && buyTheDipDays) {
+      let low = Infinity;
+      for (const [pd, v] of h(symbol).points) if (pd >= date && pd <= addDays(date, buyTheDipDays) && pd <= today && v < low) [low, d] = [v, pd];
+    }
+    // Demo storytelling: sell when the position first reaches ~+20 % (else at the best price)
     if (type === 'SELL') {
-      const lo = addDays(date, -45);
-      const hi = addDays(date, 45);
-      for (const [pd, v] of h(symbol).points) if (pd >= lo && pd <= hi && pd <= today && v > priceOn(symbol, d)) d = pd;
+      const buys = txs.filter((t) => t.symbol === symbol && t.type === 'BUY');
+      const cost = buys.reduce((acc, t) => acc + t.price * t.quantity, 0) / Math.max(1e-9, buys.reduce((acc, t) => acc + t.quantity, 0));
+      const after = buys.length ? addDays(buys[buys.length - 1].date, 120) : date;
+      const until = addDays(today, -60);
+      let best: [string, number] | null = null;
+      let hit: string | null = null;
+      for (const [pd, v] of h(symbol).points) {
+        if (pd < after || pd > until) continue;
+        if (!best || v > best[1]) best = [pd, v];
+        if (!hit && v >= cost * 1.2) hit = pd;
+      }
+      d = hit ?? best?.[0] ?? d;
     }
     const s = spec(symbol);
     txs.push({
@@ -197,7 +210,7 @@ export function buildDemoData(today = toISODate(new Date())): UserData {
   trade('acc-ibkr', 'BUY', 'MSFT', '2025-04-08', 5);
 
   // Trade Republic — PEA: French stocks + monthly ETF plan
-  trade('acc-tr', 'BUY', 'SAN.PA', '2022-06-20', 30);
+  trade('acc-tr', 'BUY', 'SAN.PA', '2022-06-20', 30, 1, 400);
   trade('acc-tr', 'BUY', 'AI.PA', '2022-11-07', 15);
   trade('acc-tr', 'BUY', 'MC.PA', '2023-05-09', 3);
   trade('acc-tr', 'SELL', 'SAN.PA', '2024-09-16', 30);
