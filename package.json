@@ -15,7 +15,8 @@
     "db:migrate:local": "wrangler d1 migrations apply flonary --local",
     "db:migrate:remote": "wrangler d1 migrations apply flonary --remote",
     "deploy": "npm run build && wrangler d1 migrations apply flonary --remote && wrangler deploy",
-    "check": "npm run typecheck && npm run test"
+    "check": "npm run typecheck && npm run test",
+    "smoke": "node scripts/smoke.mjs"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.106.0",
@@ -36,5 +37,8 @@
     "vite-plugin-singlefile": "^2.3.4",
     "vitest": "^3.2.7",
     "wrangler": "^4.157.0"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

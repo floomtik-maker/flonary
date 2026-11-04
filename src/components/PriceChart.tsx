@@ -33,9 +33,14 @@ export function PriceChart({ points, fullPoints, currency, avgPrice, signals, tr
   const visibleTrades = trades.filter((t) => (t.type === 'BUY' || t.type === 'SELL') && t.date >= first);
   const lastDate = data[data.length - 1].date;
   const vals = data.map((d) => d.close);
-  const extra = [avgPrice, ...(showZones && signals ? [signals.entryZone[0], signals.exitZone[1]] : [])].filter((v): v is number => !!v);
-  const lo = Math.min(...vals, ...extra);
-  const hi = Math.max(...vals, ...extra);
+  const vlo = Math.min(...vals);
+  const vhi = Math.max(...vals);
+  // Reference levels only widen the axis when they are close to the visible prices,
+  // otherwise a far-away PRU would flatten the price line.
+  const near = (v: number | undefined): v is number => !!v && v >= vlo * 0.75 && v <= vhi * 1.25;
+  const extra = [avgPrice, ...(showZones && signals ? [signals.entryZone[0], signals.exitZone[0]] : [])].filter(near);
+  const lo = Math.min(vlo, ...extra);
+  const hi = Math.max(vhi, ...extra);
   const pad = (hi - lo) * 0.06;
 
   return (
@@ -55,11 +60,11 @@ export function PriceChart({ points, fullPoints, currency, avgPrice, signals, tr
           />
           {showZones && signals && (
             <>
-              <ReferenceArea y1={signals.entryZone[0]} y2={signals.entryZone[1]} x1={first} x2={lastDate} fill="var(--good)" fillOpacity={0.09} stroke="none" ifOverflow="extendDomain" />
-              <ReferenceArea y1={signals.exitZone[0]} y2={signals.exitZone[1]} x1={first} x2={lastDate} fill="var(--warn)" fillOpacity={0.1} stroke="none" ifOverflow="extendDomain" />
+              <ReferenceArea y1={signals.entryZone[0]} y2={signals.entryZone[1]} x1={first} x2={lastDate} fill="var(--good)" fillOpacity={0.09} stroke="none" ifOverflow="hidden" />
+              <ReferenceArea y1={signals.exitZone[0]} y2={signals.exitZone[1]} x1={first} x2={lastDate} fill="var(--warn)" fillOpacity={0.1} stroke="none" ifOverflow="hidden" />
             </>
           )}
-          {avgPrice ? (
+          {near(avgPrice) ? (
             <ReferenceLine y={avgPrice} stroke="var(--series-7)" strokeDasharray="5 4" strokeWidth={1.5} label={{ value: 'PRU', position: 'insideTopLeft', fill: 'var(--series-7)', fontSize: 12 }} />
           ) : null}
           <Tooltip
@@ -94,7 +99,7 @@ export function PriceChart({ points, fullPoints, currency, avgPrice, signals, tr
                 fill={t.type === 'BUY' ? 'var(--good)' : 'var(--bad)'}
                 stroke="var(--surface)"
                 strokeWidth={2}
-                ifOverflow="extendDomain"
+                ifOverflow="hidden"
               />
             );
           })}
