@@ -205,7 +205,7 @@ api.get('/market/profile', async (c) => {
 
 // ---------------------------------------------------------------- settings
 api.get('/settings/market', async (c) => c.json(await marketSettings(c.env)));
-api.put('/settings/market', async (c) => c.json(await saveMarketSettings(c.env, await body(c))));
+api.put('/settings/market', async (c) => c.json(await saveMarketSettings(c.env, await body(c), c.var.userId)));
 api.get('/settings/goal', async (c) => c.json(await getGoal(c.env.DB, c.var.userId)));
 api.put('/settings/goal', async (c) => {
   const goal = validateGoal(await body(c));
