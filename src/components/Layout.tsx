@@ -36,7 +36,7 @@ export function Layout() {
         {backend.mode === 'demo' && (
           <div className="demo-banner">
             <span>
-              <b>Mode démo</b> — portefeuille fictif et cours simulés. Vos modifications restent dans ce navigateur.
+              <b>Démo</b> · portefeuille fictif, cours simulés
             </span>
             <span className="toolbar">
               <button
