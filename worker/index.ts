@@ -12,6 +12,7 @@ import type { Env } from './env';
 import { ProviderError } from './market/types';
 import { seal, unseal, uuid } from './crypto';
 import { syncIbkr } from './connectors/ibkr';
+import { syncAllConnections } from './connectors/sync-all';
 import { googleCallback, googleEnabled, googleStart } from './google';
 import { guessCountry } from '../shared/geo';
 import type { Instrument } from '../shared/types';
@@ -277,5 +278,6 @@ export default {
   /** Cron (wrangler.toml [triggers]): refresh held tickers every weekday evening after the US close. */
   async scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext) {
     ctx.waitUntil(withMarketKey(env).then(refreshAll).then((r) => console.log('market refresh', r)));
+    ctx.waitUntil(syncAllConnections(env).then((r) => console.log('ibkr sync', r)));
   },
 } satisfies ExportedHandler<Env>;

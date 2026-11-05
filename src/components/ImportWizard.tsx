@@ -4,6 +4,7 @@ import { useBackend } from '../api';
 import type { Account, Instrument, Transaction } from '../../shared/types';
 import { FIELD_LABELS, detectMapping, looksLikeIbkr, parseCsv, parseIbkrCsv, rowsToTransactions, type Field } from '../../shared/importers/csv';
 import { parseIbkrFlexXml } from '../../shared/importers/ibkr';
+import { BROKER_LABELS as BROKER_FORMAT_LABELS, detectBroker, parseBrokerCsv } from '../../shared/importers/brokers';
 import { guessCountry } from '../../shared/geo';
 import { Modal } from './ui';
 import { TX_LABELS, date, money, qty } from '../lib/format';
@@ -29,6 +30,18 @@ function parseFile(text: string, filename: string, mapping?: Partial<Record<Fiel
   if (looksLikeIbkr(rows[0])) {
     const r = parseIbkrCsv(rows);
     return { format: 'Interactive Brokers (Flex CSV)', drafts: r.transactions, errors: r.warnings, names: r.names };
+  }
+  const broker = mapping ? null : detectBroker(rows[0]);
+  if (broker) {
+    const res = parseBrokerCsv(rows, broker);
+    const names: Parsed['names'] = {};
+    for (const r of res) if (r.tx?.symbol && r.name) names[r.tx.symbol] ??= { name: r.name, currency: r.tx.currency, isin: r.isin };
+    return {
+      format: BROKER_FORMAT_LABELS[broker],
+      drafts: res.filter((r) => r.tx).map((r) => r.tx!),
+      errors: res.filter((r) => r.error).map((r) => `Ligne ${r.line} : ${r.error}`),
+      names,
+    };
   }
   const map = mapping ?? detectMapping(rows[0]);
   const res = rowsToTransactions(rows.slice(1), map);
