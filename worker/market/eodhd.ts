@@ -1,8 +1,8 @@
 /**
  * EODHD (https://eodhd.com) — official API, global coverage (US, Euronext, Xetra, LSE…).
- * Docs: https://eodhd.com/financial-apis/
+ * Docs: https://eodhd.com/financial-apis/  ·  Cost: 1 call per request (fundamentals: 10).
  */
-import type { CalendarEvent, Point, PriceHistory, Quote, SearchResult } from '../../shared/types';
+import type { Point, Quote, SearchResult } from '../../shared/types';
 import { countryFr, sectorFr } from '../../shared/geo';
 import { getJson, ProviderError, type MarketProvider, type ProviderProfile } from './types';
 
@@ -27,20 +27,13 @@ export function fromEodhd(code: string, exchange: string): string {
   return `${code}.${map[ex] ?? ex}`;
 }
 
-interface EodRow {
-  date: string;
-  close: number;
-}
-interface DivRow {
-  date: string;
-  value: number;
-  unadjustedValue?: number;
-  paymentDate?: string | null;
-  currency?: string;
-}
-interface SplitRow {
-  date: string;
-  split: string;
+/** The EOD endpoint has no currency field: infer it from the exchange. */
+export function currencyOfSymbol(symbol: string): string {
+  const t = toEodhd(symbol);
+  const ex = t.split('.').pop()!;
+  const byEx: Record<string, string> = { US: 'USD', LSE: 'GBp', SW: 'CHF', TO: 'CAD', TSE: 'JPY', HK: 'HKD', ST: 'SEK', CO: 'DKK', OL: 'NOK' };
+  if (ex === 'CC') return symbol.endsWith('-EUR') ? 'EUR' : 'USD';
+  return byEx[ex] ?? 'EUR';
 }
 
 export function parseSplit(s: string): number {
@@ -48,86 +41,75 @@ export function parseSplit(s: string): number {
   return a > 0 && b > 0 ? a / b : 1;
 }
 
+interface DivRow {
+  date: string;
+  value: number;
+  unadjustedValue?: number;
+  paymentDate?: string | null;
+  currency?: string;
+}
+
 /**
- * `fundamentals` enables /fundamentals (country, sector — costs 10 calls) and /calendar/earnings.
- * Neither is included in the "EOD Historical All-World" plan, so they are off by default
- * (country is then guessed from the ticker suffix and earnings dates are not shown).
+ * @param spend reserves n API calls in the daily budget (throws when exhausted)
+ * @param fundamentals /fundamentals (10 calls) + earnings calendar: not in the "EOD Historical" plan
  */
-export function eodhd(apiKey: string, opts: { fundamentals?: boolean } = {}): MarketProvider {
-  const url = (path: string, params: Record<string, string> = {}) =>
-    `${BASE}${path}?${new URLSearchParams({ api_token: apiKey, fmt: 'json', ...params })}`;
-
-  async function currencyOf(sym: string): Promise<string> {
-    // The EOD endpoint has no currency field: infer from the exchange.
-    const ex = sym.split('.').pop()!;
-    const byEx: Record<string, string> = { US: 'USD', LSE: 'GBp', SW: 'CHF', TO: 'CAD', TSE: 'JPY', HK: 'HKD', ST: 'SEK', CO: 'DKK', OL: 'NOK', CC: sym.includes('-EUR') ? 'EUR' : 'USD' };
-    return byEx[ex] ?? 'EUR';
-  }
-
-  return {
+export function eodhd(apiKey: string, spend: (n: number) => Promise<void>, opts: { fundamentals?: boolean } = {}): MarketProvider {
+  const get = async <T>(path: string, params: Record<string, string>, label: string, cost = 1): Promise<T> => {
+    await spend(cost);
+    return getJson<T>(`${BASE}${path}?${new URLSearchParams({ api_token: apiKey, fmt: 'json', ...params })}`, label);
+  };
+  const provider: MarketProvider = {
     name: 'EODHD',
-    async history(symbol, from) {
-      const t = toEodhd(symbol);
-      const [rows, divs, splits] = await Promise.all([
-        getJson<EodRow[]>(url(`/eod/${t}`, { from, period: 'd' }), 'EODHD eod'),
-        getJson<DivRow[]>(url(`/div/${t}`, { from }), 'EODHD div').catch(() => [] as DivRow[]),
-        getJson<SplitRow[]>(url(`/splits/${t}`, { from }), 'EODHD splits').catch(() => [] as SplitRow[]),
-      ]);
-      if (!Array.isArray(rows) || rows.length === 0) throw new ProviderError(`EODHD: aucun cours pour ${symbol}`, 404);
-      const points: Point[] = rows.filter((r) => r.close != null).map((r) => [r.date, r.close]);
-      const dividends: Point[] = (Array.isArray(divs) ? divs : []).map((d) => [d.date, d.unadjustedValue ?? d.value]);
-      const sp: Point[] = (Array.isArray(splits) ? splits : []).map((s) => [s.date, parseSplit(s.split)]);
-      return { symbol, currency: await currencyOf(t), points, dividends, splits: sp } satisfies PriceHistory;
+    async eod(symbol, from) {
+      const rows = await get<{ date: string; close: number }[]>(`/eod/${toEodhd(symbol)}`, { from, period: 'd' }, 'EODHD cours');
+      if (!Array.isArray(rows)) throw new ProviderError(`EODHD : réponse inattendue pour ${symbol}`);
+      return { currency: currencyOfSymbol(symbol), points: rows.filter((r) => r.close != null).map((r): Point => [r.date, r.close]) };
+    },
+    async dividends(symbol, from) {
+      const rows = await get<DivRow[]>(`/div/${toEodhd(symbol)}`, { from }, 'EODHD dividendes');
+      return (Array.isArray(rows) ? rows : []).map((d): Point => [d.date, d.unadjustedValue ?? d.value]);
+    },
+    async splits(symbol) {
+      const rows = await get<{ date: string; split: string }[]>(`/splits/${toEodhd(symbol)}`, {}, 'EODHD splits');
+      return (Array.isArray(rows) ? rows : []).map((s): Point => [s.date, parseSplit(s.split)]);
     },
     async quote(symbol) {
-      const t = toEodhd(symbol);
-      const q = await getJson<{ close: number | 'NA'; previousClose?: number; change_p?: number | 'NA'; timestamp?: number }>(url(`/real-time/${t}`), 'EODHD quote');
-      if (typeof q.close !== 'number') throw new ProviderError(`EODHD: pas de cotation pour ${symbol}`, 404);
+      const q = await get<{ close: number | 'NA'; change_p?: number | 'NA'; timestamp?: number }>(`/real-time/${toEodhd(symbol)}`, {}, 'EODHD cotation');
+      if (typeof q.close !== 'number') throw new ProviderError(`EODHD : pas de cotation pour ${symbol}`, 404);
       return {
         symbol,
         price: q.close,
-        currency: await currencyOf(t),
+        currency: currencyOfSymbol(symbol),
         change_pct: typeof q.change_p === 'number' ? q.change_p : null,
         time: q.timestamp ? new Date(q.timestamp * 1000).toISOString() : undefined,
       } satisfies Quote;
     },
     async search(q) {
-      const rows = await getJson<{ Code: string; Exchange: string; Name: string; Type: string; Currency: string; ISIN?: string }[]>(
-        url(`/search/${encodeURIComponent(q)}`, { limit: '12' }),
-        'EODHD search',
+      const rows = await get<{ Code: string; Exchange: string; Name: string; Type: string; Currency: string }[]>(
+        `/search/${encodeURIComponent(q)}`,
+        { limit: '12' },
+        'EODHD recherche',
       );
-      return rows.map(
-        (r): SearchResult => ({ symbol: fromEodhd(r.Code, r.Exchange), name: r.Name, exchange: r.Exchange, type: r.Type, currency: r.Currency }),
-      );
+      return rows.map((r): SearchResult => ({ symbol: fromEodhd(r.Code, r.Exchange), name: r.Name, exchange: r.Exchange, type: r.Type, currency: r.Currency }));
     },
-    async profile(symbol, today) {
+  };
+  if (opts.fundamentals) {
+    provider.profile = async (symbol, today): Promise<ProviderProfile> => {
       const t = toEodhd(symbol);
-      const events: CalendarEvent[] = [];
       const until = `${Number(today.slice(0, 4)) + 1}${today.slice(4)}`;
-      const [general, earnings, divs] = await Promise.all([
-        opts.fundamentals
-          ? getJson<Record<string, string | null>>(url(`/fundamentals/${t}`, { filter: 'General' }), 'EODHD fundamentals').catch(() => null)
-          : Promise.resolve(null),
-        opts.fundamentals
-          ? getJson<{ earnings?: { report_date: string }[] }>(url('/calendar/earnings', { symbols: t, from: today, to: until }), 'EODHD earnings').catch(() => null)
-          : Promise.resolve(null),
-        getJson<DivRow[]>(url(`/div/${t}`, { from: today }), 'EODHD div').catch(() => [] as DivRow[]),
+      const [g, earnings] = await Promise.all([
+        get<Record<string, string | null>>(`/fundamentals/${t}`, { filter: 'General' }, 'EODHD fondamentaux', 10).catch(() => null),
+        get<{ earnings?: { report_date: string }[] }>('/calendar/earnings', { symbols: t, from: today, to: until }, 'EODHD résultats').catch(() => null),
       ]);
-      for (const e of earnings?.earnings ?? []) if (e.report_date >= today) events.push({ symbol, date: e.report_date, kind: 'earnings' });
-      for (const d of Array.isArray(divs) ? divs : []) {
-        if (d.date >= today) events.push({ symbol, date: d.date, kind: 'ex_dividend', amount: d.unadjustedValue ?? d.value, currency: d.currency });
-        if (d.paymentDate && d.paymentDate >= today)
-          events.push({ symbol, date: d.paymentDate, kind: 'dividend_payment', amount: d.unadjustedValue ?? d.value, currency: d.currency });
-      }
-      const g = general && typeof general === 'object' && !Array.isArray(general) ? general : null;
       return {
         name: g?.Name ?? undefined,
         country: countryFr(g?.CountryName ?? null),
         sector: sectorFr(g?.Sector ?? null),
         isin: g?.ISIN ?? null,
         type: g?.Type ?? null,
-        events,
-      } satisfies ProviderProfile;
-    },
-  };
+        earnings: (earnings?.earnings ?? []).map((e) => e.report_date).filter((d) => d >= today),
+      };
+    };
+  }
+  return provider;
 }

@@ -6,7 +6,9 @@ import { Hono } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { currentUser, HttpError, login, logout, register, requireUser, sameOrigin, type AppEnv } from './auth';
 import { getUserData, saveTransactions, upsertInstrument, validateInstrument, assertAccount } from './data';
-import { getFx, getHistories, getQuotes, profile, providers, search } from './market';
+import { getFx, getHistories, getQuotes, profile, provider, quotesEnabled, refreshAll, search } from './market';
+import { dailyLimit, usedToday } from './market/budget';
+import type { Env } from './env';
 import { ProviderError } from './market/types';
 import { seal, unseal, uuid } from './crypto';
 import { syncIbkr } from './connectors/ibkr';
@@ -39,9 +41,16 @@ const body = async <T = Record<string, unknown>>(c: { req: { json: () => Promise
 };
 
 // ---------------------------------------------------------------- health
-app.get('/health', (c) =>
-  c.json({ ok: true, providers: providers(c.env).map((p) => p.name), google: googleEnabled(c), signup: c.env.ALLOW_SIGNUP !== 'false' }),
-);
+app.get('/health', async (c) => {
+  const p = provider(c.env);
+  return c.json({
+    ok: true,
+    providers: p ? [p.name] : [],
+    calls: p ? { used: await usedToday(c.env), limit: dailyLimit(c.env), live_quotes: quotesEnabled(c.env) } : null,
+    google: googleEnabled(c),
+    signup: c.env.ALLOW_SIGNUP !== 'false',
+  });
+});
 
 // ---------------------------------------------------------------- auth
 app.post('/auth/register', async (c) => {
@@ -244,4 +253,10 @@ api.post('/connections/:id/sync', async (c) => {
 
 app.route('/', api);
 
-export default app;
+export default {
+  fetch: app.fetch,
+  /** Cron (wrangler.toml [triggers]): refresh held tickers every weekday evening after the US close. */
+  async scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext) {
+    ctx.waitUntil(refreshAll(env).then((r) => console.log('market refresh', r)));
+  },
+} satisfies ExportedHandler<Env>;

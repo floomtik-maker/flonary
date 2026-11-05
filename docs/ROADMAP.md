@@ -13,17 +13,19 @@
 
 ## À faire ensuite (par priorité)
 
-1. **Mettre en ligne** : `wrangler login`, secrets, `npm run deploy` (voir README). Prendre une clé EODHD (l'offre gratuite est limitée à 20 requêtes/jour).
+1. **Mettre en ligne** : secrets GitHub + Actions (docs/MISE-EN-LIGNE.md). Clé EODHD gratuite pour commencer.
 2. **Vérifier avec les vraies données** de l'utilisateur : synchro IBKR avec un vrai jeton, import d'un export Trade Republic réel, saisie du PEE. Ajuster les parseurs si les colonnes diffèrent (ajouter un test avec un extrait anonymisé).
-3. **Mise à jour automatique** : Cron Trigger Cloudflare (`[triggers] crons` dans `wrangler.toml` + handler `scheduled`) pour synchroniser IBKR chaque nuit et préchauffer le cache des cours.
-4. **Benchmark** sur la courbe de synthèse (ex. MSCI World via l'ETF CW8.PA) pour comparer sa performance.
-5. **Exposition des ETF par transparence** (répartition réelle d'un MSCI World par pays/secteur) au lieu d'une zone unique.
-6. **Fiscalité** : plus-values réalisées par année civile (aide à la déclaration 2074 pour le CTO), distinction PEA / CTO.
-7. **Alertes** : notification (e-mail ou push) quand un titre entre dans sa zone d'achat ou de sortie, ou à l'approche d'un dividende.
-8. **Crypto** : symboles `BTC-USD` déjà gérés par le moteur ; ajouter un import (Binance, Kraken) si besoin.
-9. Sécurité : limiter les tentatives de connexion (table `login_attempts` ou Cloudflare Rate Limiting), réinitialisation de mot de passe par e-mail.
+3. **Synchro IBKR nocturne** : le cron du soir rafraîchit déjà les cours ; y ajouter la synchronisation des connexions Interactive Brokers.
+4. **Économiser EODHD sur les titres US** : fournisseur Massive (ex-Polygon, gratuit, 5 appels/min, endpoint « grouped daily » = tous les cours US en 1 appel, `adjusted=false`).
+5. **Benchmark** sur la courbe de synthèse (ex. MSCI World via l'ETF CW8.PA) pour comparer sa performance.
+6. **Exposition des ETF par transparence** (répartition réelle d'un MSCI World par pays/secteur) au lieu d'une zone unique.
+7. **Fiscalité** : plus-values réalisées par année civile (aide à la déclaration 2074 pour le CTO), distinction PEA / CTO.
+8. **Alertes** : notification (e-mail ou push) quand un titre entre dans sa zone d'achat ou de sortie, ou à l'approche d'un dividende.
+9. **Crypto** : symboles `BTC-USD` déjà gérés par le moteur ; ajouter un import (Binance, Kraken) si besoin.
+10. Sécurité : limiter les tentatives de connexion (table `login_attempts` ou Cloudflare Rate Limiting), réinitialisation de mot de passe par e-mail.
 
 ## Idées écartées (et pourquoi)
 
-- **Scraping Yahoo Finance** : non officiel, contraire aux conditions d'utilisation et bloqué fréquemment. On utilise des API officielles avec clé.
+- **Scraping Yahoo Finance / Stooq** : non officiel, contraire aux conditions d'utilisation. On utilise des API officielles avec clé.
+- **Twelve Data, Tiingo gratuits** : leurs conditions interdisent l'affichage / la production (vérifié nov. 2026) ; Twelve Data gratuit ne couvre que les US.
 - **Agrégateurs bancaires (Powens, Bridge…)** pour Trade Republic / BNP : payants et soumis à agrément ; l'import CSV couvre le besoin pour un usage personnel.

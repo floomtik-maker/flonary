@@ -74,7 +74,35 @@ L'ami a sa propre copie du code (un « fork ») et son propre site, avec sa prop
 
 **Pourquoi** : l'appli récupère les cours chez un fournisseur officiel de données boursières, qui demande une « clé » (un mot de passe technique). **Chacun utilise la sienne.** Elle se colle dans les secrets GitHub (étapes A3 ou B3) : le site la récupère au prochain déploiement.
 
-<!-- PRICE-PROVIDER-SECTION -->
+### Ce qu'il faut savoir
+
+Après une recherche approfondie, **aucune source gratuite et légale ne couvre correctement les bourses européennes** (Paris, Amsterdam, Francfort). Les alternatives sont limitées aux actions américaines, ou interdisent l'affichage dans une appli. Flonary utilise donc **EODHD**, qui couvre toutes les bourses, en économisant au maximum les appels.
+
+| Offre EODHD | Prix | Ce que ça donne dans Flonary |
+|---|---|---|
+| **Free** | 0 €, **sans carte bancaire** | 20 appels par jour. Cours mis à jour **chaque soir**, historique limité à 1 an. Confortable jusqu'à **une quinzaine de titres**. |
+| **EOD Historical All-World** | **199 $/an** (≈ 16,60 $/mois) ou 19,99 $/mois | Illimité en pratique (100 000 appels/jour), 30 ans d'historique, cours **en journée** (différés de 15 min). |
+
+- **Coût en appels** : un titre ajouté coûte 3 appels la première fois (cours, dividendes, divisions d'actions), puis 1 appel par soir. Le site garde tout en mémoire, partagé entre ses utilisateurs : recharger la page ne coûte rien.
+- **Quota dépassé ?** EODHD refuse simplement les demandes suivantes jusqu'à minuit (heure de Londres). **Rien n'est facturé.** Flonary affiche le dernier cours connu et rattrape le soir suivant.
+- La **recherche par code ISIN** (utilisée par les imports Trade Republic) est gratuite et ne consomme pas d'appels.
+
+### Créer la clé (gratuit)
+
+1. Ouvre https://eodhd.com/register
+2. Sous **« Sign up with »**, clique sur **« Google »** (ou **« GitHub »**) et connecte-toi avec ce compte. Aucune carte bancaire n'est demandée.
+3. Une fois connecté, ouvre https://eodhd.com/cp/dashboard : la clé est affichée sous le nom **« API token »** (une longue suite de lettres et de chiffres). Elle arrive aussi dans l'e-mail de bienvenue.
+4. **Vérifie la clé** : ouvre `https://eodhd.com/api/user?api_token=TA_CLE&fmt=json` en remplaçant `TA_CLE`. La page doit afficher les infos de ton compte. Si elle affiche une erreur, la clé est mal copiée.
+5. Dans GitHub (**Settings** → **Secrets and variables** → **Actions** → **New repository secret**) : **Name** `EODHD_API_KEY`, **Secret** = la clé → **« Add secret »**.
+6. Relance la mise en ligne (étape A4, ou pousse n'importe quel changement sur `main`).
+
+*Le site d'EODHD évolue : si un libellé diffère légèrement, cherche l'équivalent le plus proche.*
+
+### Passer à l'offre payante (plus tard)
+
+1. Ouvre https://eodhd.com/pricing
+2. Dans la colonne **« EOD Historical All-World »**, choisis l'annuel ou le mensuel et clique sur **« Sign up & Pay »** (carte ou PayPal). La clé ne change pas.
+3. Dans les secrets GitHub, ajoute **Name** `EODHD_DAILY_LIMIT`, **Secret** `100000`, puis relance la mise en ligne. Flonary active alors les cours en journée.
 
 ---
 

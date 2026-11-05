@@ -10,9 +10,10 @@ export interface Env {
   GOOGLE_CLIENT_SECRET?: string;
   /** Encrypts broker tokens stored in D1 */
   SECRETS_KEY?: string;
-  /** Market data providers (at least one recommended). EODHD is tried first. */
+  /** Market data (https://eodhd.com) */
   EODHD_API_KEY?: string;
+  /** Daily EODHD call allowance: 20 on the free plan (default), 100000 on paid plans */
+  EODHD_DAILY_LIMIT?: string;
   /** "true" when the EODHD plan includes Fundamentals + corporate calendar (country, sector, earnings dates) */
   EODHD_FUNDAMENTALS?: string;
-  TWELVEDATA_API_KEY?: string;
 }

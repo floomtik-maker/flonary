@@ -1,6 +1,5 @@
 # Copy to .dev.vars for local development (`npm run dev:worker`). Never commit .dev.vars.
 SECRETS_KEY=change-me-to-a-long-random-string
-# At least one market data provider (see README):
-EODHD_API_KEY=
-TWELVEDATA_API_KEY=
-ALLOW_SIGNUP=true
+# Market data (see docs/MISE-EN-LIGNE.md). The key "demo" works for a few US tickers (AAPL, MSFT…).
+EODHD_API_KEY=demo
+EODHD_DAILY_LIMIT=1000

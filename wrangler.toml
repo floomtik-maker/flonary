@@ -26,8 +26,13 @@ EODHD_FUNDAMENTALS = "false"
 
 # Secrets (set with `npx wrangler secret put NAME`, or in .dev.vars locally):
 #   SECRETS_KEY         — random string, encrypts broker tokens stored in D1 (recommended)
-#   TWELVEDATA_API_KEY  — optional fallback price provider (free tier: https://twelvedata.com)
+#   EODHD_API_KEY       — market data key (https://eodhd.com)
+#   EODHD_DAILY_LIMIT   — "100000" on a paid EODHD plan (default 20 = free plan; also enables live quotes)
 #   GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET — optional "Continuer avec Google" button
+
+# Nightly refresh of the tickers held by users (Mon–Fri 22:30 UTC, after the US close)
+[triggers]
+crons = ["30 22 * * 1-5"]
 
 [observability]
 enabled = true

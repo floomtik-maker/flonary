@@ -70,10 +70,11 @@ L'appli tourne sur un **Cloudflare Worker** (gratuit pour un usage perso) avec u
 npx wrangler login
 npx wrangler secret put SECRETS_KEY       # une longue chaîne aléatoire (chiffre les jetons des courtiers)
 npx wrangler secret put EODHD_API_KEY     # clé de la source de cours (voir ci-dessous)
+# (ou, sans terminal : secrets GitHub + Actions, voir docs/MISE-EN-LIGNE.md)
 npm run deploy                            # build + migrations + déploiement
 ```
 
-L'URL s'affiche à la fin (`https://flonary.<sous-domaine>.workers.dev`). Créez votre compte : **seul le premier compte peut s'inscrire** ; pour ouvrir les inscriptions, passez `ALLOW_SIGNUP` à `"true"` dans `wrangler.toml`.
+Le site est sur `https://flonary.guillaume-astesana.workers.dev`. Chacun crée son compte et ne voit que ses données ; pour restreindre, secret `ALLOWED_EMAILS`.
 
 Déploiement automatique : ajoutez les secrets `CLOUDFLARE_API_TOKEN` et `CLOUDFLARE_ACCOUNT_ID` au dépôt GitHub ; chaque push sur `main` déploie (`.github/workflows/deploy.yml`).
 
@@ -92,18 +93,16 @@ Les données d'un ancien déploiement se transfèrent avec **Comptes → Sauvega
 
 ## Source des cours
 
-Les cours viennent d'API officielles (pas de scraping) ; il faut au moins une clé :
+Aucune source **gratuite et légale** ne couvre bien les bourses européennes : Twelve Data gratuit = US uniquement et usage en production interdit ; Tiingo, Massive/Polygon et Alpaca = US ; Alpha Vantage = 25 appels/jour et 100 jours d'historique ; scraper Yahoo ou Stooq = interdit. Flonary utilise donc **[EODHD](https://eodhd.com)** (toutes les bourses), en économisant les appels :
 
-| Variable | Fournisseur | Couverture | Gratuit |
-|---|---|---|---|
-| `EODHD_API_KEY` (recommandé) | [EODHD](https://eodhd.com) | Monde (US, Euronext, Xetra, LSE…), dividendes, splits | 20 appels/jour, 1 an d'historique, sans carte (test uniquement) ; « EOD Historical All-World » 19,99 $/mois, 100 000 appels/jour |
-| `TWELVEDATA_API_KEY` | [Twelve Data](https://twelvedata.com) | Surtout US en gratuit | 800 requêtes/jour |
+- historique récupéré une fois, puis complété d'**1 appel par titre et par soir** ; dividendes et splits rafraîchis chaque semaine ;
+- cache D1 partagé entre les utilisateurs du site ; tâche planifiée chaque soir de semaine (22 h 30 UTC) ;
+- **budget quotidien** (`EODHD_DAILY_LIMIT`, 20 par défaut = offre gratuite) : quand il est épuisé, le dernier cours connu est affiché ;
+- recherche par **ISIN gratuite via OpenFIGI** ; cours en journée seulement si `EODHD_DAILY_LIMIT` ≥ 1000 (offre payante).
 
-Avec EODHD, le pays/secteur et les dates de résultats nécessitent l'offre « Fundamentals » : mettre alors `EODHD_FUNDAMENTALS = "true"` dans `wrangler.toml`. Sinon le pays est déduit du ticker (modifiable dans la fiche du titre) et le calendrier affiche les dividendes uniquement.
+Offre gratuite : environ 15 titres, cours du soir, 1 an d'historique. Offre « EOD Historical All-World » (199 $/an) : illimité. Le pays/secteur et les dates de résultats demandent l'offre « Fundamentals » (`EODHD_FUNDAMENTALS = "true"`) ; sinon le pays est déduit du ticker.
 
-Les deux peuvent être configurées : EODHD est essayé d'abord, Twelve Data ensuite. Les réponses sont mises en cache dans D1 (6 h pour l'historique, 10 min pour les cours), et en cas de panne le dernier cours connu est utilisé. Les taux de change viennent de la BCE (Frankfurter, sans clé). Sans aucune clé, l'appli fonctionne quand même : chaque titre est valorisé à son dernier prix saisi.
-
-Les tickers suivent la convention `AAPL`, `MC.PA` (Paris), `ASML.AS` (Amsterdam), `SAP.DE` (Xetra), `VOD.L` (Londres).
+Les taux de change viennent de la BCE (Frankfurter, sans clé). Les tickers suivent la convention `AAPL`, `MC.PA`, `ASML.AS`, `SAP.DE`, `VOD.L`.
 
 ## Courtiers
 

@@ -359,26 +359,35 @@ function MarketStatus() {
   const health = useQuery({
     queryKey: ['health'],
     queryFn: async () => {
-      if (backend.mode === 'demo') return { providers: ['Simulation (démo)'] };
+      if (backend.mode === 'demo') return { providers: ['Simulation (démo)'], calls: null };
       const r = await fetch('/api/health');
-      return (await r.json()) as { providers: string[] };
+      return (await r.json()) as { providers: string[]; calls: { used: number; limit: number; live_quotes: boolean } | null };
     },
-    staleTime: 5 * 60_000,
+    staleTime: 60_000,
   });
   const providers = health.data?.providers ?? [];
+  const calls = health.data?.calls;
   return (
     <section className="card">
       <div className="card-title">Source des cours</div>
       {health.isLoading ? (
         <p className="muted small">…</p>
       ) : providers.length ? (
-        <p className="small" style={{ margin: 0 }}>
-          <span className="pill up">● Actif</span> {providers.join(', ')} · taux de change BCE
-        </p>
+        <>
+          <p className="small" style={{ margin: 0 }}>
+            <span className="pill up">● Actif</span> {providers.join(', ')} · taux de change BCE
+          </p>
+          {calls && (
+            <p className="hint" style={{ marginBottom: 0 }}>
+              {calls.limit <= 100
+                ? `Offre gratuite : cours mis à jour chaque soir (${calls.used}/${calls.limit} appels utilisés aujourd'hui). Idéal jusqu'à une quinzaine de titres.`
+                : `Cours en temps réel (différé 15 min) · ${calls.used} appels aujourd'hui.`}
+            </p>
+          )}
+        </>
       ) : (
         <div className="warning-box">
-          Aucune source de cours configurée : les titres sont valorisés au dernier prix saisi. Ajoutez une clé <b>EODHD_API_KEY</b> ou{' '}
-          <b>TWELVEDATA_API_KEY</b> au Worker (voir README).
+          Aucune source de cours configurée : les titres sont valorisés au dernier prix saisi. Ajoutez une clé <b>EODHD_API_KEY</b> (voir docs/MISE-EN-LIGNE.md).
         </div>
       )}
     </section>
