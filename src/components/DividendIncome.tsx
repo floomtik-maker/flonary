@@ -26,18 +26,18 @@ export function DividendIncome({ state, events }: { state: PortfolioState; event
   return (
     <section className="card" style={{ marginBottom: 16 }}>
       <div className="kpi-label">Revenus passifs</div>
-      <div className="grid grid-3" style={{ marginTop: 8 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12, marginTop: 8 }}>
         <div>
-          <div className="small muted">Reçus (12 derniers mois)</div>
-          <div className="hero-value num" style={{ fontSize: 24 }}>{eur(income.trailing12m)}</div>
+          <div className="small muted">Reçus · 12 mois</div>
+          <div className="hero-value num" style={{ fontSize: 'clamp(17px, 4.5vw, 24px)' }}>{eur(income.trailing12m)}</div>
         </div>
         <div>
-          <div className="small muted">Attendus (12 prochains mois)</div>
-          <div className="hero-value num" style={{ fontSize: 24 }}>{eur(income.next12m)}</div>
+          <div className="small muted">À venir · 12 mois</div>
+          <div className="hero-value num" style={{ fontSize: 'clamp(17px, 4.5vw, 24px)' }}>{eur(income.next12m)}</div>
         </div>
         <div>
-          <div className="small muted">Rendement sur coût</div>
-          <div className="hero-value num" style={{ fontSize: 24 }}>{income.yieldOnCost == null ? '—' : pct(income.yieldOnCost)}</div>
+          <div className="small muted">Rendement / coût</div>
+          <div className="hero-value num" style={{ fontSize: 'clamp(17px, 4.5vw, 24px)' }}>{income.yieldOnCost == null ? '—' : pct(income.yieldOnCost)}</div>
         </div>
       </div>
       {hasBars && (
