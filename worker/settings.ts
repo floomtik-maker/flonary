@@ -9,6 +9,8 @@ import { HttpError } from './auth';
 
 const KEY = 'eodhd_api_key';
 const LIMIT = 'eodhd_daily_limit';
+/** User who pasted the site-wide key: the only one allowed to change it. */
+const OWNER = 'eodhd_owner';
 export const PAID_LIMIT = '100000';
 
 export async function getAppSetting(db: D1Database, key: string): Promise<string | null> {
@@ -77,13 +79,16 @@ async function validateKey(apiKey: string): Promise<void> {
   if (!j || typeof j !== 'object' || 'error' in j) throw new HttpError(422, 'Clé refusée par EODHD.');
 }
 
-export async function saveMarketSettings(env: Env, b: Record<string, unknown>): Promise<MarketSettings> {
+export async function saveMarketSettings(env: Env, b: Record<string, unknown>, userId: string): Promise<MarketSettings> {
   if (env.EODHD_API_KEY) throw new HttpError(409, 'La clé est déjà définie par l’hébergeur (secret EODHD_API_KEY).');
+  const owner = await getAppSetting(env.DB, OWNER);
+  if (owner && owner !== userId) throw new HttpError(403, 'Seule la personne qui a enregistré la clé peut la changer.');
   const apiKey = typeof b.apiKey === 'string' ? b.apiKey.trim() : '';
   if (!/^[A-Za-z0-9._-]{4,100}$/.test(apiKey)) throw new HttpError(422, 'Clé EODHD invalide');
   await validateKey(apiKey);
   await setAppSetting(env.DB, KEY, await seal(apiKey, env.SECRETS_KEY));
   await setAppSetting(env.DB, LIMIT, b.paid === true ? PAID_LIMIT : null);
+  await setAppSetting(env.DB, OWNER, userId);
   memo.delete(env);
   return marketSettings(env);
 }
