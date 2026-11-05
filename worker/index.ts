@@ -184,7 +184,7 @@ api.post('/restore', async (c) => {
 // ---------------------------------------------------------------- market data
 api.get('/market/history', async (c) => {
   const from = /^\d{4}-\d{2}-\d{2}$/.test(c.req.query('from') ?? '') ? c.req.query('from')! : '2015-01-01';
-  const { data, errors } = await getHistories(c.env, c.req.query('symbols') ?? null, from);
+  const { data, errors } = await getHistories(c.env, c.req.query('symbols') ?? null, from, c.var.userId);
   if (Object.keys(data).length === 0 && Object.keys(errors).length > 0) {
     const first = Object.values(errors)[0];
     throw new ProviderError(first, first.includes('Aucune source') ? 503 : 502);

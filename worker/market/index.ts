@@ -13,7 +13,7 @@ import { guessCountry } from '../../shared/geo';
 import { eodhd } from './eodhd';
 import { fxSeries } from './fx';
 import { cached } from './cache';
-import { dailyLimit, spend } from './budget';
+import { dailyLimit, spend, spendNewSymbol } from './budget';
 import { isIsin, searchIsin } from './openfigi';
 import { ProviderError, type MarketProvider } from './types';
 
@@ -82,12 +82,13 @@ async function writeCache(db: D1Database, key: string, value: unknown) {
 const histKey = (symbol: string) => `hist:v2:${symbol}`;
 
 /** Returns the (possibly refreshed) history for one symbol. Falls back to the cache on any error. */
-export async function history(env: Env, symbol: string, from: string, now = new Date()): Promise<PriceHistory> {
+export async function history(env: Env, symbol: string, from: string, now = new Date(), userId?: string): Promise<PriceHistory> {
   const today = toISODate(now);
   const c = await readCache<CachedHistory>(env.DB, histKey(symbol));
   const full = !c || c.from > from;
   if (c && !full && !needsPriceRefresh(c, today, now.getUTCHours())) return c;
   const p = requireProvider(env);
+  if (!c && userId) await spendNewSymbol(env, userId);
   try {
     let next: CachedHistory;
     if (full) {
@@ -120,13 +121,13 @@ export async function history(env: Env, symbol: string, from: string, now = new 
 const cleanSymbols = (s: string | null) =>
   [...new Set((s ?? '').split(',').map((x) => x.trim()).filter((x) => x && !x.startsWith('manual:') && /^[A-Za-z0-9.\-^=_/]{1,24}$/.test(x)))].slice(0, 80);
 
-export async function getHistories(env: Env, symbolsParam: string | null, from: string): Promise<{ data: Record<string, PriceHistory>; errors: Record<string, string> }> {
+export async function getHistories(env: Env, symbolsParam: string | null, from: string, userId?: string): Promise<{ data: Record<string, PriceHistory>; errors: Record<string, string> }> {
   const data: Record<string, PriceHistory> = {};
   const errors: Record<string, string> = {};
   // Sequential on purpose: keeps the call budget predictable and providers happy.
   for (const symbol of cleanSymbols(symbolsParam)) {
     try {
-      data[symbol] = await history(env, symbol, from);
+      data[symbol] = await history(env, symbol, from, new Date(), userId);
     } catch (e) {
       errors[symbol] = (e as Error).message;
     }
