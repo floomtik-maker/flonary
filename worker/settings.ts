@@ -9,7 +9,6 @@ import { HttpError } from './auth';
 
 const KEY = 'eodhd_api_key';
 const LIMIT = 'eodhd_daily_limit';
-const OWNER = 'eodhd_owner';
 export const PAID_LIMIT = '100000';
 
 export async function getAppSetting(db: D1Database, key: string): Promise<string | null> {
@@ -56,24 +55,12 @@ export interface MarketSettings {
   configured: boolean;
   source: 'env' | 'app' | null;
   plan: 'free' | 'paid';
-  /** false when the key belongs to another user (or to the host): shown read-only. */
-  editable: boolean;
 }
 
-/**
- * The site-wide key is owned by the user who first saved it; nobody else may replace it
- * (sign-up is open, so any visitor could otherwise swap or wipe the owner's paid key).
- * A key saved before ownership existed (owner null) is claimed by the next user who saves one.
- */
-export function canEditMarketKey(ownerId: string | null, userId: string): boolean {
-  return ownerId == null || ownerId === userId;
-}
-
-export async function marketSettings(env: Env, userId: string): Promise<MarketSettings> {
+export async function marketSettings(env: Env): Promise<MarketSettings> {
   const e = await withMarketKey(env);
   const source = env.EODHD_API_KEY ? 'env' : e.EODHD_API_KEY ? 'app' : null;
-  const editable = source !== 'env' && (source == null || canEditMarketKey(await getAppSetting(env.DB, OWNER), userId));
-  return { configured: source != null, source, plan: source && Number(e.EODHD_DAILY_LIMIT) >= 1000 ? 'paid' : 'free', editable };
+  return { configured: source != null, source, plan: source && Number(e.EODHD_DAILY_LIMIT) >= 1000 ? 'paid' : 'free' };
 }
 
 /** Checks the key against EODHD's account endpoint (not counted in the daily call quota). */
@@ -90,19 +77,15 @@ async function validateKey(apiKey: string): Promise<void> {
   if (!j || typeof j !== 'object' || 'error' in j) throw new HttpError(422, 'Clé refusée par EODHD.');
 }
 
-export async function saveMarketSettings(env: Env, userId: string, b: Record<string, unknown>): Promise<MarketSettings> {
+export async function saveMarketSettings(env: Env, b: Record<string, unknown>): Promise<MarketSettings> {
   if (env.EODHD_API_KEY) throw new HttpError(409, 'La clé est déjà définie par l’hébergeur (secret EODHD_API_KEY).');
-  const hasKey = (await getAppSetting(env.DB, KEY)) != null;
-  if (hasKey && !canEditMarketKey(await getAppSetting(env.DB, OWNER), userId))
-    throw new HttpError(403, 'La clé de données de marché a été configurée par un autre utilisateur : seul lui peut la modifier.');
   const apiKey = typeof b.apiKey === 'string' ? b.apiKey.trim() : '';
   if (!/^[A-Za-z0-9._-]{4,100}$/.test(apiKey)) throw new HttpError(422, 'Clé EODHD invalide');
   await validateKey(apiKey);
   await setAppSetting(env.DB, KEY, await seal(apiKey, env.SECRETS_KEY));
   await setAppSetting(env.DB, LIMIT, b.paid === true ? PAID_LIMIT : null);
-  await setAppSetting(env.DB, OWNER, userId);
   memo.delete(env);
-  return marketSettings(env, userId);
+  return marketSettings(env);
 }
 
 // ---------------------------------------------------------------- per-user goal
