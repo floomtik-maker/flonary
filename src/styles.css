@@ -93,7 +93,8 @@
 html,
 body {
   margin: 0;
-  overflow-x: hidden;
+  /* clip (not hidden): hidden would turn body into a scroll container */
+  overflow-x: clip;
   background: var(--bg);
   color: var(--text);
   font-family: var(--font);
@@ -123,9 +124,14 @@ textarea {
   min-height: 100vh;
 }
 .sidebar {
-  position: sticky;
+  /* always visible, full height, whatever the scroll position */
+  position: fixed;
   top: 0;
-  height: 100vh;
+  bottom: 0;
+  left: 0;
+  width: 220px;
+  overflow-y: auto;
+  z-index: 10;
   padding: 20px 12px;
   border-right: 1px solid var(--border);
   background: var(--surface);
@@ -181,6 +187,7 @@ textarea {
   padding: 0 10px;
 }
 .main {
+  grid-column: 2;
   min-width: 0;
   padding: 28px 32px 48px;
   max-width: 1180px;
@@ -225,6 +232,7 @@ textarea {
     display: none;
   }
   .main {
+    grid-column: 1;
     padding: 16px 16px 96px;
   }
   .bottom-nav {
