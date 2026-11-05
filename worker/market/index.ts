@@ -27,7 +27,7 @@ export function provider(env: Env): MarketProvider | null {
 
 function requireProvider(env: Env): MarketProvider {
   const p = provider(env);
-  if (!p) throw new ProviderError('Aucune source de cours configurée (EODHD_API_KEY). Voir docs/MISE-EN-LIGNE.md.', 503);
+  if (!p) throw new ProviderError('Aucune source de cours configurée : ajoutez une clé EODHD dans Comptes › Source des cours.', 503);
   return p;
 }
 

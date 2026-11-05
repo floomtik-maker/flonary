@@ -37,6 +37,20 @@ export interface SyncResult {
   message?: string;
 }
 
+export interface MarketSettings {
+  configured: boolean;
+  /** 'env' = Worker secret (set by the host), 'app' = pasted in the app */
+  source: 'env' | 'app' | 'demo' | null;
+  plan: 'free' | 'paid';
+}
+
+/** Wealth goal (objectif de patrimoine) */
+export interface Goal {
+  target: number;
+  date: string;
+  monthly?: number;
+}
+
 /**
  * Everything the UI needs from the outside world. Two implementations:
  * - HttpBackend (src/api/http.ts): talks to the Cloudflare Worker (worker/).
@@ -71,4 +85,10 @@ export interface Backend {
   saveConnection(c: { account_id: string; label: string; token: string; query_id: string }): Promise<Connection>;
   deleteConnection(id: string): Promise<void>;
   syncConnection(id: string): Promise<SyncResult>;
+
+  /** Site-wide market-data key (never returned by the server) */
+  marketSettings(): Promise<MarketSettings>;
+  saveMarketSettings(s: { apiKey: string; paid: boolean }): Promise<MarketSettings>;
+  goal(): Promise<Goal | null>;
+  saveGoal(g: Goal): Promise<Goal>;
 }

@@ -5,6 +5,9 @@ import { project } from '../../shared/analysis';
 import { PageLoading } from '../components/ui';
 import { compactEur, eur, pct } from '../lib/format';
 import { parseNumber } from '../../shared/importers/csv';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useBackend } from '../api';
+import { goalProgress, monthsBetween, requiredMonthly } from '../lib/goal';
 
 export function Projection() {
   const { state, loading, error } = usePortfolio();
@@ -150,6 +153,75 @@ export function Projection() {
           </div>
         </section>
       </div>
+      <GoalCard current={current} rate={rate} today={state.today} monthly={Math.max(0, parseNumber(monthly) || 0)} />
     </>
+  );
+}
+
+function GoalCard({ current, rate, today, monthly }: { current: number; rate: number; today: string; monthly: number }) {
+  const backend = useBackend();
+  const qc = useQueryClient();
+  const goal = useQuery({ queryKey: ['goal'], queryFn: () => backend.goal() });
+  const [target, setTarget] = useState<string | null>(null);
+  const [date, setDate] = useState<string | null>(null);
+  const save = useMutation({
+    mutationFn: () => backend.saveGoal({ target: parseNumber(target ?? '') || 0, date: date ?? '', monthly }),
+    onSuccess: (g) => {
+      qc.setQueryData(['goal'], g);
+      setTarget(null);
+      setDate(null);
+    },
+  });
+  const g = goal.data;
+  const t = target ?? (g ? String(g.target) : '');
+  const d = date ?? g?.date ?? '';
+  const dirty = target != null || date != null;
+  const months = g ? monthsBetween(today, g.date) : 0;
+  const need = g ? requiredMonthly(current, g.target, months, rate / 100) : 0;
+  const progress = g ? goalProgress(current, g.target) : 0;
+
+  return (
+    <section className="card" style={{ marginTop: 16 }}>
+      <div className="card-title">Objectif</div>
+      <form
+        style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}
+        onSubmit={(e) => {
+          e.preventDefault();
+          save.mutate();
+        }}
+      >
+        <label className="field">
+          Montant visé (€)
+          <input className="input" inputMode="decimal" value={t} placeholder="500 000" onChange={(e) => setTarget(e.target.value)} />
+        </label>
+        <label className="field">
+          Date
+          <input className="input" type="date" value={d} min={today} onChange={(e) => setDate(e.target.value)} />
+        </label>
+        {(dirty || !g) && (
+          <button className="btn primary" type="submit" disabled={!(parseNumber(t) > 0) || !d || save.isPending}>
+            Enregistrer
+          </button>
+        )}
+      </form>
+      {save.error && <div className="error small">{(save.error as Error).message}</div>}
+      {g && !dirty && (
+        <div style={{ marginTop: 14 }}>
+          <div className="bar-track" role="progressbar" aria-valuenow={Math.round(progress * 100)} aria-valuemin={0} aria-valuemax={100}>
+            <div className="bar-fill" style={{ width: `${progress * 100}%`, background: 'var(--series-1)' }} />
+          </div>
+          <p className="small" style={{ margin: '8px 0 0' }}>
+            <b className="num">{pct(progress)}</b> atteint · {eur(current)} sur {eur(g.target)}
+          </p>
+          <p className="small muted" style={{ margin: '4px 0 0' }}>
+            {need === 0
+              ? `À ${rate} % par an, votre capital actuel suffit pour atteindre l'objectif.`
+              : Number.isFinite(need)
+                ? `Versement nécessaire : ${eur(Math.ceil(need))} / mois pendant ${months} mois, à ${rate} % par an.`
+                : "La date de l'objectif est passée."}
+          </p>
+        </div>
+      )}
+    </section>
   );
 }

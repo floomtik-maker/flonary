@@ -356,6 +356,8 @@ function Connections({ accounts }: { accounts: Account[] }) {
 
 function MarketStatus() {
   const backend = useBackend();
+  const qc = useQueryClient();
+  const settings = useQuery({ queryKey: ['market-settings'], queryFn: () => backend.marketSettings(), staleTime: 60_000 });
   const health = useQuery({
     queryKey: ['health'],
     queryFn: async () => {
@@ -365,13 +367,65 @@ function MarketStatus() {
     },
     staleTime: 60_000,
   });
+  const [changing, setChanging] = useState(false);
+  const [apiKey, setApiKey] = useState('');
+  const [paid, setPaid] = useState(false);
+  const save = useMutation({
+    mutationFn: () => backend.saveMarketSettings({ apiKey: apiKey.trim(), paid }),
+    onSuccess: () => {
+      setChanging(false);
+      setApiKey('');
+      qc.invalidateQueries({ queryKey: ['market-settings'] });
+      qc.invalidateQueries({ queryKey: ['health'] });
+      qc.invalidateQueries({ queryKey: ['history'] });
+      qc.invalidateQueries({ queryKey: ['quotes'] });
+    },
+  });
   const providers = health.data?.providers ?? [];
   const calls = health.data?.calls;
+  const s = settings.data;
+  const showForm = s && (!s.configured || changing) && s.source !== 'env' && s.source !== 'demo';
   return (
     <section className="card">
       <div className="card-title">Source des cours</div>
-      {health.isLoading ? (
+      {health.isLoading || settings.isLoading ? (
         <p className="muted small">…</p>
+      ) : showForm ? (
+        <form
+          className="stack"
+          style={{ gap: 10 }}
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (apiKey.trim()) save.mutate();
+          }}
+        >
+          <p className="hint" style={{ margin: 0 }}>
+            Pour suivre les cours, créez une clé gratuite sur{' '}
+            <a href="https://eodhd.com/register" target="_blank" rel="noreferrer">
+              eodhd.com
+            </a>{' '}
+            puis collez-la ici.
+          </p>
+          <label className="field">
+            Clé EODHD
+            <input className="input" value={apiKey} onChange={(e) => setApiKey(e.target.value)} autoComplete="off" spellCheck={false} />
+          </label>
+          <label className="small" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <input type="checkbox" checked={paid} onChange={(e) => setPaid(e.target.checked)} />
+            J'ai l'offre payante
+          </label>
+          {save.error && <div className="error small">{(save.error as Error).message}</div>}
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="btn primary" type="submit" disabled={!apiKey.trim() || save.isPending}>
+              {save.isPending ? 'Vérification…' : 'Enregistrer'}
+            </button>
+            {changing && (
+              <button className="btn" type="button" onClick={() => setChanging(false)}>
+                Annuler
+              </button>
+            )}
+          </div>
+        </form>
       ) : providers.length ? (
         <>
           <p className="small" style={{ margin: 0 }}>
@@ -384,11 +438,14 @@ function MarketStatus() {
                 : `Cours en temps réel (différé 15 min) · ${calls.used} appels aujourd'hui.`}
             </p>
           )}
+          {s?.source === 'app' && (
+            <button className="btn small" style={{ marginTop: 10 }} onClick={() => setChanging(true)}>
+              Changer la clé
+            </button>
+          )}
         </>
       ) : (
-        <div className="warning-box">
-          Aucune source de cours configurée : les titres sont valorisés au dernier prix saisi. Ajoutez une clé <b>EODHD_API_KEY</b> (voir docs/MISE-EN-LIGNE.md).
-        </div>
+        <div className="warning-box">Aucune source de cours configurée : les titres sont valorisés au dernier prix saisi.</div>
       )}
     </section>
   );
