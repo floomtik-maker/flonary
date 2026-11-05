@@ -1,176 +1,110 @@
 # Mettre Flonary en ligne, pas à pas
 
-Ce guide est écrit pour quelqu'un qui ne développe pas. Chaque étape dit **pourquoi** on la fait, **ce qu'il faut faire** et **ce qui va se passer**. Compter environ 20 minutes.
+Guide pour quelqu'un qui ne développe pas. **Aucune commande à taper** : tout se fait dans le navigateur, sur Cloudflare (l'hébergeur) et GitHub (là où est le code). Ensuite, chaque modification poussée sur la branche `main` met le site à jour automatiquement.
 
-Coût : **0 €** pour l'hébergement (offre gratuite Cloudflare, aucune carte demandée). Seule la source des cours de bourse peut devenir payante (voir étape 2).
+Coût : **0 €**. L'offre gratuite de Cloudflare suffit largement (100 000 pages vues par jour) et ne demande pas de carte bancaire.
 
----
-
-## Étape 0 — Préparer son ordinateur (une seule fois)
-
-**Pourquoi** : les commandes de ce guide ont besoin de Node.js, un outil qui fait tourner les programmes JavaScript.
-
-1. Aller sur https://nodejs.org
-2. Cliquer sur le gros bouton vert **« Get Node.js »** puis **« Download Node.js (LTS) »** (la version « LTS » est la version stable).
-3. Ouvrir le fichier téléchargé et suivre l'installation (« Continuer » / « Suivant » jusqu'au bout).
-4. Ouvrir le **Terminal** (Mac : touche Cmd + Espace, taper « Terminal », Entrée).
-5. Récupérer le projet et entrer dans son dossier (remplacer l'adresse par celle de **votre** dépôt GitHub) :
-
-```bash
-git clone https://github.com/VOTRE-COMPTE/flonary.git
-```
-```bash
-cd flonary
-```
-```bash
-npm install
-```
-
-**Ce qui se passe** : `git clone` copie le projet sur l'ordinateur ; `cd flonary` se place dans son dossier ; `npm install` télécharge les briques dont le projet a besoin (1 à 2 minutes, beaucoup de texte défile, c'est normal). Rien n'est encore mis en ligne.
+> **Ami de Guillaume** : l'hébergement est déjà prêt pour toi sur le compte Cloudflare de Guillaume. Fais seulement la partie B (ton agent IA te guidera). La partie A est pour Guillaume. Si un jour tu veux ton propre hébergement, voir la partie D.
 
 ---
 
-## Étape 1 — Créer son compte Cloudflare (si on n'en a pas)
+## A. Côté Guillaume (propriétaire du compte Cloudflare) — une seule fois
 
-**Pourquoi** : Cloudflare héberge le site et sa base de données. L'offre gratuite suffit largement pour un usage personnel (100 000 visites de pages par jour).
+### A1. Créer une clé d'accès Cloudflare (« API token »)
 
-1. Aller sur https://dash.cloudflare.com/sign-up
-2. Saisir son e-mail et un mot de passe, cliquer sur **« Sign up »**.
-3. Ouvrir l'e-mail de confirmation reçu de Cloudflare et cliquer sur le lien de vérification.
+**Pourquoi** : GitHub doit avoir le droit de publier le site sur ton compte Cloudflare. Cette clé lui donne ce droit, limité aux Workers (le site) et à D1 (la base de données).
 
-Aucune carte bancaire n'est demandée.
+1. Ouvre https://dash.cloudflare.com/profile/api-tokens
+2. Clique sur le bouton bleu **« Create Token »**.
+3. Sur la ligne du modèle **« Edit Cloudflare Workers »**, clique sur **« Use template »** (à droite).
+4. Dans la section **« Permissions »**, clique sur **« + Add more »**, puis choisis dans les trois menus : **Account** → **D1** → **Edit**.
+5. Section **« Account Resources »** : **Include** → ton compte.
+6. Section **« Zone Resources »** : **Include** → **All zones**.
+7. En bas, clique sur **« Continue to summary »**, puis sur **« Create Token »**.
+8. **Copie la clé affichée** et garde-la dans une note : Cloudflare ne la montrera plus. Tu la colleras dans GitHub (étape A3) et tu la donneras à ton ami par message privé.
 
----
+### A2. Trouver l'identifiant de ton compte Cloudflare (« Account ID »)
 
-## Étape 2 — Obtenir sa clé pour les cours de bourse (EODHD)
+1. Ouvre https://dash.cloudflare.com et clique sur ton compte si on te le demande.
+2. Regarde l'adresse dans la barre du navigateur : `https://dash.cloudflare.com/` **`xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`** `/home`. Les 32 caractères au milieu sont l'**Account ID**. Copie-les.
 
-**Pourquoi** : l'appli va chercher les cours des actions chez EODHD, un fournisseur officiel de données boursières. Il faut une « clé » (un mot de passe technique) pour avoir le droit de l'interroger. **Chacun utilise sa propre clé.**
+### A3. Donner ces informations à GitHub
 
-### Combien ça coûte ?
+1. Ouvre https://github.com/guillaumeast/flonary/settings/secrets/actions
+2. Clique sur le bouton vert **« New repository secret »**.
+3. **Name** : `CLOUDFLARE_API_TOKEN`. **Secret** : colle la clé de l'étape A1. Clique sur **« Add secret »**.
+4. Recommence avec **Name** `CLOUDFLARE_ACCOUNT_ID` et l'identifiant de l'étape A2.
+5. Recommence avec **Name** `SECRETS_KEY` et, comme valeur, **40 caractères tapés au hasard** (lettres et chiffres). Cette valeur chiffre les accès courtier stockés dans la base. Ne la change plus ensuite.
+6. Ajoute la clé des cours de bourse (voir la partie C) de la même façon.
 
-| Offre | Prix | Appels par jour | Pour qui |
-|---|---|---|---|
-| **Free** | 0 €, **sans carte bancaire** | 20 (+ un bonus de bienvenue) | Essayer avec 3 à 5 titres |
-| **EOD Historical All-World** | 19,99 $/mois (ou 199 $/an) | 100 000 | Usage réel, toutes les bourses du monde, 30 ans d'historique |
+### A4. Lancer la première mise en ligne
 
-- L'appli consomme environ **2 à 3 appels par titre** à chaque mise à jour (cours, dividendes, divisions d'actions), et garde les résultats en mémoire plusieurs heures pour économiser. Avec l'offre gratuite, un portefeuille de 10 titres dépasse donc la limite dès le premier chargement.
-- **Si la limite est dépassée** : EODHD refuse simplement les demandes suivantes jusqu'au lendemain (remise à zéro à minuit, heure de Londres). **Rien n'est facturé automatiquement.** Dans Flonary, les titres restent affichés à leur dernier cours connu.
-- Conseil : commencer avec l'offre gratuite pour vérifier que tout marche, puis passer à « EOD Historical All-World » pour un vrai suivi.
+1. Ouvre https://github.com/guillaumeast/flonary/actions/workflows/deploy.yml
+2. À droite, clique sur **« Run workflow »**, puis sur le bouton vert **« Run workflow »** dans le petit menu.
+3. Attends 2 à 3 minutes : une coche verte apparaît. (Croix rouge : clique dessus, puis sur l'étape en rouge pour voir l'erreur, et montre-la à ton agent IA.)
+4. Le site est en ligne sur **https://flonary.guillaume-astesana.workers.dev**
 
-### Créer la clé
+Ensuite, chaque push sur `main` remet le site à jour tout seul.
 
-1. Aller sur https://eodhd.com/register
-2. Sous **« Sign up with »**, cliquer sur **« Google »** (ou **« GitHub »**) et se connecter avec ce compte. *(Si un formulaire e-mail + mot de passe est proposé, on peut aussi l'utiliser, puis confirmer via l'e-mail reçu.)* Aucune carte bancaire n'est demandée.
-3. Une fois connecté, aller sur https://eodhd.com/cp/dashboard (le tableau de bord). La clé y est affichée sous le nom **« API token »** : une longue suite de lettres et de chiffres. Elle est aussi envoyée dans l'e-mail de bienvenue.
-4. Copier cette clé (sélectionner, puis Cmd + C).
-5. **Vérifier la clé** : coller cette adresse dans le navigateur en remplaçant `VOTRE_CLE` par la clé copiée :
-   `https://eodhd.com/api/user?api_token=VOTRE_CLE&fmt=json`
-   La page doit afficher les informations du compte (e-mail, nombre d'appels utilisés). Si elle affiche une erreur, la clé a été mal copiée.
+### A5. Créer ton compte sur le site
 
-*Le site d'EODHD évolue : si un libellé de bouton diffère légèrement, chercher l'équivalent le plus proche.*
-
-### Passer à l'offre payante (plus tard)
-
-1. Aller sur https://eodhd.com/pricing
-2. Dans la colonne **« EOD Historical All-World »**, cliquer sur **« Sign up & Pay »** et payer par carte ou PayPal.
-3. La clé ne change pas : rien à refaire dans Flonary.
+Ouvre l'adresse, clique sur **« Créer un compte »**. **Chacun crée son propre compte et ne voit que ses propres données.** Pour réserver le site à certaines personnes, ajoute dans GitHub un secret `ALLOWED_EMAILS` contenant les e-mails autorisés séparés par des virgules (par ex. `moi@gmail.com,ami@gmail.com`), puis relance l'étape A4.
 
 ---
 
-## Étape 3 — Relier le Terminal à son compte Cloudflare
+## B. Côté ami (fork) — la version de l'ami, hébergée chez Guillaume
 
-```bash
-npx wrangler login
-```
+L'ami a sa propre copie du code (un « fork ») et son propre site, avec sa propre base de données. Les deux versions évoluent indépendamment. La base de l'ami (`flonary-ami`) est **déjà créée** sur le Cloudflare de Guillaume.
 
-**Pourquoi** : `wrangler` est l'outil officiel de Cloudflare. Il doit être autorisé à agir sur votre compte pour y créer le site.
-
-**Ce qui se passe** : une page Cloudflare s'ouvre dans le navigateur (se connecter si besoin) et demande d'autoriser Wrangler. Cliquer sur **« Allow »**. Le Terminal affiche ensuite « Successfully logged in ». Cette autorisation ne vaut que pour cet ordinateur.
-
----
-
-## Étape 4 — Créer la base de données *(seulement si ce n'est pas déjà fait sur ce compte Cloudflare)*
-
-> Guillaume : déjà fait sur ton compte, passe directement à l'étape 5.
-
-```bash
-npx wrangler d1 create flonary
-```
-
-**Pourquoi** : la base de données stocke vos comptes, vos opérations et vos réglages.
-
-**Ce qui se passe** : Cloudflare crée une base vide et affiche un bloc de texte contenant `database_id = "…"`. Ouvrir le fichier `wrangler.toml` du projet et remplacer la valeur de `database_id` par celle affichée (ou demander à son agent IA de le faire). Puis :
-
-```bash
-npm run db:migrate:remote
-```
-
-**Ce qui se passe** : les tables de la base sont créées. Répondre **Y** (oui) si une confirmation est demandée.
+1. **Activer les automatisations du fork.** GitHub les désactive sur les forks. Ouvre l'onglet **« Actions »** de ton fork et clique sur le bouton vert **« I understand my workflows, go ahead and enable them »**.
+2. **Pointer vers ton site et ta base.** Dans `wrangler.toml` (ton agent IA peut le faire), remplace :
+   - `name = "flonary"` par `name = "flonary-ami"`
+   - `database_name = "flonary"` par `database_name = "flonary-ami"`
+   - le `database_id` par `f98ead9a-bfe1-4dcd-a1f2-aed01096f405`
+3. **Ajouter les secrets** dans ton fork : onglet **« Settings »** → menu de gauche **« Secrets and variables »** → **« Actions »** → **« New repository secret »**. Ajoute :
+   - `CLOUDFLARE_API_TOKEN` et `CLOUDFLARE_ACCOUNT_ID` : demande-les à Guillaume ;
+   - `SECRETS_KEY` : 40 caractères tapés au hasard ;
+   - ta propre clé de cours de bourse (partie C).
+4. **Publier** : pousse le changement de l'étape 2 sur `main` (ton agent le fait). Le site se met en ligne en 2 à 3 minutes, sur **https://flonary-ami.guillaume-astesana.workers.dev**
+5. Ouvre l'adresse et clique sur **« Créer un compte »**.
 
 ---
 
-## Étape 5 — Mettre le site en ligne
+## C. La clé pour les cours de bourse
 
-```bash
-npm run deploy
-```
+**Pourquoi** : l'appli récupère les cours chez un fournisseur officiel de données boursières, qui demande une « clé » (un mot de passe technique). **Chacun utilise la sienne.** Elle se colle dans les secrets GitHub (étapes A3 ou B3) : le site la récupère au prochain déploiement.
 
-**Pourquoi** : construit le site et l'envoie sur Cloudflare.
-
-**Ce qui se passe** (environ 1 minute) :
-- le site est préparé, puis la base est mise à jour si besoin (« No migrations to apply » est normal) ;
-- la première fois sur un compte, Cloudflare peut demander de choisir un sous-domaine `workers.dev` : répondre **Y** et taper un nom (par ex. votre prénom) ;
-- à la fin s'affiche l'adresse du site, du type `https://flonary.votre-nom.workers.dev`. **Notez-la.**
-
-À ce stade, le site fonctionne mais sans les cours de bourse.
+<!-- PRICE-PROVIDER-SECTION -->
 
 ---
 
-## Étape 6 — Donner au site ses deux secrets
+## D. (Optionnel) Ajouter « Continuer avec Google »
 
-Les secrets sont stockés chez Cloudflare, jamais dans le code. Après chaque commande, le Terminal affiche **« Enter a secret value: »** : coller la valeur puis Entrée. Le texte reste invisible pendant la saisie, c'est normal.
+**Pourquoi** : se connecter en un clic avec son compte Google au lieu d'un mot de passe. C'est facultatif : l'inscription par e-mail marche sans ça. Environ 10 minutes, une fois par site.
 
-**a) La clé des cours de bourse** (celle de l'étape 2) :
+1. Ouvre https://console.cloud.google.com/projectcreate. **Project name** : `Flonary`, puis **« Create »**.
+2. Ouvre https://console.cloud.google.com/auth/overview (vérifie en haut que le projet « Flonary » est sélectionné) et clique sur **« Get started »** :
+   - **App name** : `Flonary` ; **User support email** : ton e-mail ; **« Next »** ;
+   - **Audience** : **External** ; **« Next »** ;
+   - **Contact information** : ton e-mail ; **« Next »** ;
+   - coche l'acceptation des conditions, puis **« Create »**.
+3. Ouvre https://console.cloud.google.com/auth/audience et clique sur **« Publish app »**, puis **« Confirm »**. Sans ça, seuls les « test users » peuvent se connecter.
+4. Ouvre https://console.cloud.google.com/auth/clients et clique sur **« + Create client »** :
+   - **Application type** : **Web application** ; **Name** : `Flonary` ;
+   - **Authorized redirect URIs** → **« + Add URI »** → colle l'adresse du site suivie de `/api/auth/google/callback`, par exemple
+     `https://flonary.guillaume-astesana.workers.dev/api/auth/google/callback`
+     (et, pour le site de l'ami, ajoute aussi `https://flonary-ami.guillaume-astesana.workers.dev/api/auth/google/callback`) ;
+   - clique sur **« Create »**.
+5. Une fenêtre affiche le **Client ID** et le **Client secret**. Copie-les dans les secrets GitHub sous les noms `GOOGLE_CLIENT_ID` et `GOOGLE_CLIENT_SECRET`, puis relance le déploiement. Un même client Google peut servir aux deux sites.
 
-```bash
-npx wrangler secret put EODHD_API_KEY
-```
-
-**b) Une clé de chiffrement** qui protège vos accès courtier (Interactive Brokers) stockés dans la base. Générer une valeur au hasard avec :
-
-```bash
-node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
-```
-
-Copier la ligne affichée, puis :
-
-```bash
-npx wrangler secret put SECRETS_KEY
-```
-
-et coller la valeur. **Ne la changez plus ensuite** : sinon les connexions Interactive Brokers déjà enregistrées devront être refaites.
-
-Chaque secret est pris en compte immédiatement, sans redéployer.
+*Les écrans Google évoluent : si un libellé diffère légèrement, cherche l'équivalent le plus proche.*
 
 ---
 
-## Étape 7 — Créer son compte sur le site
+## E. (Optionnel) Héberger sur son propre compte Cloudflare
 
-1. Ouvrir l'adresse notée à l'étape 5.
-2. Cliquer sur **« Créer un compte »**, saisir e-mail et mot de passe (10 caractères minimum).
-
-**Important** : le premier compte créé est le seul autorisé ; les inscriptions sont ensuite fermées, donc personne d'autre ne peut créer de compte sur votre site. Faites-le tout de suite après le déploiement.
-
-3. Dans **Comptes**, vérifier que l'encadré **« Source des cours »** affiche **« Actif · EODHD »**.
-
----
-
-## Plus tard : mettre à jour le site
-
-Après une modification du code (par vous ou votre agent IA) :
-
-```bash
-npm run deploy
-```
-
-Vos données ne sont pas touchées.
+1. Créer un compte : https://dash.cloudflare.com/sign-up → e-mail + mot de passe → **« Sign up »** → cliquer sur le lien reçu par e-mail.
+2. Créer la base : https://dash.cloudflare.com → menu de gauche **« Storage & databases »** → **« D1 SQL database »** → **« Create Database »** → nom `flonary` → **« Create »**. Copier le **Database ID** affiché.
+3. Mettre ce `database_id` et `name = "flonary"` dans `wrangler.toml`.
+4. Refaire les étapes A1 à A4 avec son propre compte et son propre dépôt. La base est remplie automatiquement au premier déploiement.
+5. Pour récupérer ses données de l'ancien site : **Comptes → Sauvegarde → Exporter** sur l'ancien, **Restaurer** sur le nouveau.
