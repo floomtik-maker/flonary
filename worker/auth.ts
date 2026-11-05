@@ -69,8 +69,24 @@ export async function register(c: Context<AppEnv>, emailIn: unknown, passwordIn:
   return { id, email };
 }
 
+/** Brute-force guard: failed logins per (e-mail, IP) in 15-minute windows (stored in market_cache). */
+export const LOGIN_MAX_FAILURES = 10;
+const LOGIN_WINDOW_MS = 15 * 60_000;
+export async function loginThrottleKey(email: string, ip: string, now = Date.now()): Promise<string> {
+  return `login:${await sha256(`${email}|${ip}`)}:${Math.floor(now / LOGIN_WINDOW_MS)}`;
+}
+
 export async function login(c: Context<AppEnv>, emailIn: unknown, passwordIn: unknown) {
   const { email, password } = validateCredentials(emailIn, passwordIn, false);
+  const throttleKey = await loginThrottleKey(email, c.req.header('cf-connecting-ip') ?? '');
+  const failures = await c.env.DB.prepare('SELECT value FROM market_cache WHERE key = ?').bind(throttleKey).first<{ value: string }>();
+  if (Number(failures?.value ?? 0) >= LOGIN_MAX_FAILURES) throw new HttpError(429, 'Trop de tentatives : réessayez dans 15 minutes.');
+  const recordFailure = () =>
+    c.env.DB.prepare(
+      "INSERT INTO market_cache (key, value, fetched_at) VALUES (?, '1', ?) ON CONFLICT(key) DO UPDATE SET value = CAST(CAST(value AS INTEGER) + 1 AS TEXT)",
+    )
+      .bind(throttleKey, Date.now())
+      .run();
   const u = await c.env.DB.prepare('SELECT id, email, password_hash, password_salt, password_iterations FROM users WHERE email = ?')
     .bind(email)
     .first<{ id: string; email: string; password_hash: string; password_salt: string; password_iterations: number }>();
@@ -79,10 +95,16 @@ export async function login(c: Context<AppEnv>, emailIn: unknown, passwordIn: un
   const salt = u && !googleOnly ? unb64(u.password_salt) : new Uint8Array(16);
   const hash = await hashPassword(password, salt, u && !googleOnly ? u.password_iterations : PBKDF2_ITERATIONS);
   if (googleOnly) throw new HttpError(401, 'Ce compte se connecte avec Google : utilisez « Continuer avec Google ».');
-  if (!u || !timingSafeEqual(hash, u.password_hash)) throw new HttpError(401, 'E-mail ou mot de passe incorrect');
+  if (!u || !timingSafeEqual(hash, u.password_hash)) {
+    await recordFailure();
+    throw new HttpError(401, 'E-mail ou mot de passe incorrect');
+  }
   await createSession(c, u.id);
   // Opportunistic cleanup of expired sessions
-  await c.env.DB.prepare('DELETE FROM sessions WHERE expires_at < ?').bind(new Date().toISOString()).run();
+  await c.env.DB.batch([
+    c.env.DB.prepare('DELETE FROM sessions WHERE expires_at < ?').bind(new Date().toISOString()),
+    c.env.DB.prepare("DELETE FROM market_cache WHERE key LIKE 'login:%' AND fetched_at < ?").bind(Date.now() - LOGIN_WINDOW_MS),
+  ]);
   return { id: u.id, email: u.email };
 }
 
