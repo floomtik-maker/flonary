@@ -72,7 +72,11 @@ L'ami a sa propre copie du code (un « fork ») et son propre site, avec sa prop
 
 ## C. La clé pour les cours de bourse
 
-**Pourquoi** : l'appli récupère les cours chez un fournisseur officiel de données boursières, qui demande une « clé » (un mot de passe technique). **Chacun utilise la sienne.** Elle se colle dans les secrets GitHub (étapes A3 ou B3) : le site la récupère au prochain déploiement.
+**Pourquoi** : l'appli récupère les cours chez un fournisseur officiel de données boursières, qui demande une « clé » (un mot de passe technique). **Chacun utilise la sienne.**
+
+**Le plus simple : la coller directement dans l'appli.** Connecte-toi au site, ouvre **Comptes**, carte **« Source des cours »**, colle la clé dans **« Clé EODHD »** (coche « J'ai l'offre payante » si c'est le cas) puis **« Enregistrer »**. Flonary vérifie la clé auprès d'EODHD et l'enregistre chiffrée : rien à faire dans GitHub ni Cloudflare. La clé vaut pour tout le site (tous ses utilisateurs).
+
+*Autre possibilité (pour les techniciens)* : la mettre dans les secrets GitHub (étapes A3 ou B3, voir l'étape 5 ci-dessous) ; elle est alors prioritaire sur celle collée dans l'appli.
 
 ### Ce qu'il faut savoir
 
@@ -93,8 +97,8 @@ Après une recherche approfondie, **aucune source gratuite et légale ne couvre 
 2. Sous **« Sign up with »**, clique sur **« Google »** (ou **« GitHub »**) et connecte-toi avec ce compte. Aucune carte bancaire n'est demandée.
 3. Une fois connecté, ouvre https://eodhd.com/cp/dashboard : la clé est affichée sous le nom **« API token »** (une longue suite de lettres et de chiffres). Elle arrive aussi dans l'e-mail de bienvenue.
 4. **Vérifie la clé** : ouvre `https://eodhd.com/api/user?api_token=TA_CLE&fmt=json` en remplaçant `TA_CLE`. La page doit afficher les infos de ton compte. Si elle affiche une erreur, la clé est mal copiée.
-5. Dans GitHub (**Settings** → **Secrets and variables** → **Actions** → **New repository secret**) : **Name** `EODHD_API_KEY`, **Secret** = la clé → **« Add secret »**.
-6. Relance la mise en ligne (étape A4, ou pousse n'importe quel changement sur `main`).
+5. Colle-la dans l'appli (**Comptes** → **Source des cours**) — c'est terminé. *Ou*, version technique : dans GitHub (**Settings** → **Secrets and variables** → **Actions** → **New repository secret**) : **Name** `EODHD_API_KEY`, **Secret** = la clé → **« Add secret »**.
+6. Seulement si tu as utilisé GitHub : relance la mise en ligne (étape A4, ou pousse n'importe quel changement sur `main`).
 
 *Le site d'EODHD évolue : si un libellé diffère légèrement, cherche l'équivalent le plus proche.*
 
@@ -102,7 +106,7 @@ Après une recherche approfondie, **aucune source gratuite et légale ne couvre 
 
 1. Ouvre https://eodhd.com/pricing
 2. Dans la colonne **« EOD Historical All-World »**, choisis l'annuel ou le mensuel et clique sur **« Sign up & Pay »** (carte ou PayPal). La clé ne change pas.
-3. Dans les secrets GitHub, ajoute **Name** `EODHD_DAILY_LIMIT`, **Secret** `100000`, puis relance la mise en ligne. Flonary active alors les cours en journée.
+3. Dans l'appli : **Comptes** → **Source des cours** → **« Changer la clé »**, recolle la clé et coche **« J'ai l'offre payante »**. *Ou*, si la clé est dans GitHub : dans les secrets GitHub, ajoute **Name** `EODHD_DAILY_LIMIT`, **Secret** `100000`, puis relance la mise en ligne. Flonary active alors les cours en journée.
 
 ---
 

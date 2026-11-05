@@ -40,7 +40,7 @@ export function withMarketKey(env: Env): Promise<Env> {
         if (!sealed) return env;
         const apiKey = await unseal(sealed, env.SECRETS_KEY);
         const limit = await getAppSetting(env.DB, LIMIT);
-        return { ...env, EODHD_API_KEY: apiKey, EODHD_DAILY_LIMIT: limit ?? env.EODHD_DAILY_LIMIT };
+        return { ...env, EODHD_API_KEY: apiKey, EODHD_DAILY_LIMIT: limit ?? '20' };
       } catch (e) {
         console.error('market key', e);
         return env;
@@ -60,7 +60,7 @@ export interface MarketSettings {
 export async function marketSettings(env: Env): Promise<MarketSettings> {
   const e = await withMarketKey(env);
   const source = env.EODHD_API_KEY ? 'env' : e.EODHD_API_KEY ? 'app' : null;
-  return { configured: source != null, source, plan: Number(e.EODHD_DAILY_LIMIT) >= 1000 ? 'paid' : 'free' };
+  return { configured: source != null, source, plan: source && Number(e.EODHD_DAILY_LIMIT) >= 1000 ? 'paid' : 'free' };
 }
 
 /** Checks the key against EODHD's account endpoint (not counted in the daily call quota). */
