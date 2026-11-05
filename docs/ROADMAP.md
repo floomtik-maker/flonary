@@ -29,3 +29,13 @@
 - **Scraping Yahoo Finance / Stooq** : non officiel, contraire aux conditions d'utilisation. On utilise des API officielles avec clé.
 - **Twelve Data, Tiingo gratuits** : leurs conditions interdisent l'affichage / la production (vérifié nov. 2026) ; Twelve Data gratuit ne couvre que les US.
 - **Agrégateurs bancaires (Powens, Bridge…)** pour Trade Republic / BNP : payants et soumis à agrément ; l'import CSV couvre le besoin pour un usage personnel.
+
+## Prochaines fonctionnalités recommandées (étude de marché)
+
+Voir [docs/ETUDE-MARCHE.md](ETUDE-MARCHE.md) (difficultés des particuliers, concurrents, priorités). En bref :
+
+1. Phrase de synthèse unique en tête (versé → valeur → gain, %/an).
+2. Comparaison à un ETF World avec les mêmes versements (rejoint le point 5).
+3. Récap fiscal annuel : plus-values du CTO pour la 2074, dividendes (rejoint le point 7).
+4. Total des frais payés par an et par compte.
+5. Dates clés des enveloppes (5 ans du PEA, déblocage du PEE, plafond restant du PEA) et alerte « cash qui dort ».
