@@ -182,7 +182,7 @@ export function Analysis() {
                   <thead>
                     <tr>
                       <th>Année</th>
-                      <th className="r">Plus-values nettes</th>
+                      <th className="r">Plus-values</th>
                       {analysis.hasTaxable && <th className="r" title="Comptes-titres uniquement : montant à reporter (formulaire 2074, case 3VG ou 3VH)">dont CTO</th>}
                       <th className="r">Dividendes</th>
                       <th className="r">Frais</th>
