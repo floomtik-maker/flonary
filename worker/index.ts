@@ -10,6 +10,7 @@ import { getFx, getHistories, getQuotes, profile, providers, search } from './ma
 import { ProviderError } from './market/types';
 import { seal, unseal, uuid } from './crypto';
 import { syncIbkr } from './connectors/ibkr';
+import { googleCallback, googleEnabled, googleStart } from './google';
 import { guessCountry } from '../shared/geo';
 import type { Instrument } from '../shared/types';
 
@@ -38,7 +39,9 @@ const body = async <T = Record<string, unknown>>(c: { req: { json: () => Promise
 };
 
 // ---------------------------------------------------------------- health
-app.get('/health', (c) => c.json({ ok: true, providers: providers(c.env).map((p) => p.name) }));
+app.get('/health', (c) =>
+  c.json({ ok: true, providers: providers(c.env).map((p) => p.name), google: googleEnabled(c), signup: c.env.ALLOW_SIGNUP !== 'false' }),
+);
 
 // ---------------------------------------------------------------- auth
 app.post('/auth/register', async (c) => {
@@ -49,6 +52,8 @@ app.post('/auth/login', async (c) => {
   const b = await body(c);
   return c.json(await login(c, b.email, b.password));
 });
+app.get('/auth/google', (c) => googleStart(c));
+app.get('/auth/google/callback', (c) => googleCallback(c));
 app.post('/auth/logout', async (c) => {
   await logout(c);
   return c.json({ ok: true });

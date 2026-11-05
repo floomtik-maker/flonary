@@ -17,14 +17,17 @@ database_id = "b9581bdf-98d6-4091-9233-795285cddf7d"
 migrations_dir = "migrations"
 
 [vars]
-# "true" lets anyone create an account. When "false", only the very first account can be created.
-ALLOW_SIGNUP = "false"
+# Anyone can create an account; each user only sees their own data.
+# "false" closes registrations. To restrict to some people, add a variable
+# ALLOWED_EMAILS = "a@gmail.com,b@gmail.com".
+ALLOW_SIGNUP = "true"
 # "true" only if your EODHD plan includes Fundamentals + calendar (country/sector/earnings dates)
 EODHD_FUNDAMENTALS = "false"
 
 # Secrets (set with `npx wrangler secret put NAME`, or in .dev.vars locally):
 #   SECRETS_KEY         — random string, encrypts broker tokens stored in D1 (recommended)
 #   TWELVEDATA_API_KEY  — optional fallback price provider (free tier: https://twelvedata.com)
+#   GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET — optional "Continuer avec Google" button
 
 [observability]
 enabled = true

@@ -28,7 +28,21 @@ export function validateCredentials(email: unknown, password: unknown, isRegiste
   return { email: e, password };
 }
 
-async function createSession(c: Context<AppEnv>, userId: string) {
+/**
+ * Anyone can create an account (each user only sees their own data), unless:
+ * - ALLOW_SIGNUP = "false" → registrations closed,
+ * - ALLOWED_EMAILS = "a@x.com,b@y.com" → only these addresses.
+ */
+export function assertSignupAllowed(env: Env, email: string) {
+  if (env.ALLOW_SIGNUP === 'false') throw new HttpError(403, 'Les inscriptions sont fermées sur ce site.');
+  const allowed = (env.ALLOWED_EMAILS ?? '')
+    .split(',')
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  if (allowed.length && !allowed.includes(email)) throw new HttpError(403, "Cette adresse e-mail n'est pas autorisée sur ce site.");
+}
+
+export async function createSession(c: Context<AppEnv>, userId: string) {
   const token = randomToken();
   const expires = new Date(Date.now() + SESSION_DAYS * 86_400_000);
   await c.env.DB.prepare('INSERT INTO sessions (id, user_id, expires_at) VALUES (?, ?, ?)').bind(await sha256(token), userId, expires.toISOString()).run();
@@ -43,9 +57,7 @@ async function createSession(c: Context<AppEnv>, userId: string) {
 
 export async function register(c: Context<AppEnv>, emailIn: unknown, passwordIn: unknown) {
   const { email, password } = validateCredentials(emailIn, passwordIn, true);
-  const count = await c.env.DB.prepare('SELECT COUNT(*) AS n FROM users').first<{ n: number }>();
-  if ((count?.n ?? 0) > 0 && c.env.ALLOW_SIGNUP !== 'true')
-    throw new HttpError(403, "Les inscriptions sont fermées. Demandez à l'administrateur d'activer ALLOW_SIGNUP.");
+  assertSignupAllowed(c.env, email);
   const exists = await c.env.DB.prepare('SELECT id FROM users WHERE email = ?').bind(email).first();
   if (exists) throw new HttpError(409, 'Un compte existe déjà avec cet e-mail');
   const salt = crypto.getRandomValues(new Uint8Array(16));
@@ -63,8 +75,10 @@ export async function login(c: Context<AppEnv>, emailIn: unknown, passwordIn: un
     .bind(email)
     .first<{ id: string; email: string; password_hash: string; password_salt: string; password_iterations: number }>();
   // Always run PBKDF2 so response time does not reveal whether the account exists.
-  const salt = u ? unb64(u.password_salt) : new Uint8Array(16);
-  const hash = await hashPassword(password, salt, u?.password_iterations ?? PBKDF2_ITERATIONS);
+  const googleOnly = u?.password_hash === 'google';
+  const salt = u && !googleOnly ? unb64(u.password_salt) : new Uint8Array(16);
+  const hash = await hashPassword(password, salt, u && !googleOnly ? u.password_iterations : PBKDF2_ITERATIONS);
+  if (googleOnly) throw new HttpError(401, 'Ce compte se connecte avec Google : utilisez « Continuer avec Google ».');
   if (!u || !timingSafeEqual(hash, u.password_hash)) throw new HttpError(401, 'E-mail ou mot de passe incorrect');
   await createSession(c, u.id);
   // Opportunistic cleanup of expired sessions
