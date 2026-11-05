@@ -1,0 +1,220 @@
+# Deploys the friend's fork to the Worker `flonary-ami` (D1 `flonary-ami`) on Guillaume's
+# Cloudflare account. The friend never gets the Cloudflare token: it only lives here.
+#
+# Repository variables (Settings → Secrets and variables → Actions → Variables):
+#   AMI_REPO     — the friend's fork, e.g. "someone/flonary" (empty = nothing to do)
+#   AMI_BRANCH   — optional, default "main"
+# Repository secrets: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID (same as deploy.yml),
+#   AMI_SECRETS_KEY (→ SECRETS_KEY of the friend's Worker), GOOGLE_CLIENT_ID/SECRET (optional).
+#
+# Security model:
+#   - job "build" runs the fork's (untrusted) code with NO secrets and a read-only token;
+#   - job "deploy" holds the secrets but runs only this repo's scripts + a pinned wrangler on
+#     the build output; its wrangler config is generated here (scripts/ami-wrangler-config.mjs),
+#     so the fork cannot bind other Workers/databases. Migrations only reach `flonary-ami`.
+# Note: `schedule` only runs from the default branch (main).
+name: Deploy ami
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: Redeploy even if this commit is already deployed
+        type: boolean
+        default: false
+concurrency:
+  group: deploy-ami
+  cancel-in-progress: false
+permissions:
+  contents: read
+env:
+  WRANGLER_PKG: wrangler@4.157.0
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      deploy: ${{ steps.decide.outputs.deploy }}
+      sha: ${{ steps.sha.outputs.sha }}
+    steps:
+      - name: Read settings
+        id: cfg
+        env:
+          AMI_REPO: ${{ vars.AMI_REPO }}
+          AMI_BRANCH: ${{ vars.AMI_BRANCH }}
+        run: |
+          repo="$(echo "$AMI_REPO" | tr -d '[:space:]')"
+          branch="$(echo "${AMI_BRANCH:-main}" | tr -d '[:space:]')"
+          if [ -z "$repo" ]; then
+            echo "::notice::Variable AMI_REPO is not set: nothing to deploy (see docs/MISE-EN-LIGNE.md, part B)."
+            echo "ok=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          if ! [[ "$repo" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]]; then
+            echo "::error::AMI_REPO must look like owner/repo (got '$repo')."; exit 1
+          fi
+          if ! [[ "$branch" =~ ^[A-Za-z0-9_./-]+$ ]]; then
+            echo "::error::Invalid AMI_BRANCH '$branch'."; exit 1
+          fi
+          echo "repo=$repo" >> "$GITHUB_OUTPUT"
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+          echo "ok=true" >> "$GITHUB_OUTPUT"
+
+      - name: Check out the friend's fork
+        if: steps.cfg.outputs.ok == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ steps.cfg.outputs.repo }}
+          ref: ${{ steps.cfg.outputs.branch }}
+          path: fork
+          persist-credentials: false
+
+      - name: Commit
+        id: sha
+        if: steps.cfg.outputs.ok == 'true'
+        run: echo "sha=$(git -C fork rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      # The deploy job saves a cache entry "ami-deployed-<sha>" after a successful deployment.
+      - name: Already deployed?
+        id: done
+        if: steps.cfg.outputs.ok == 'true'
+        uses: actions/cache/restore@v4
+        with:
+          path: .ami-deployed
+          key: ami-deployed-${{ steps.sha.outputs.sha }}
+          lookup-only: true
+
+      - name: Decide
+        id: decide
+        env:
+          OK: ${{ steps.cfg.outputs.ok }}
+          HIT: ${{ steps.done.outputs.cache-hit }}
+          FORCE: ${{ github.event_name == 'workflow_dispatch' && inputs.force }}
+          SHA: ${{ steps.sha.outputs.sha }}
+        run: |
+          if [ "$OK" != "true" ]; then echo "deploy=false" >> "$GITHUB_OUTPUT"; exit 0; fi
+          if [ "$HIT" = "true" ] && [ "$FORCE" != "true" ]; then
+            echo "::notice::Commit $SHA is already deployed: nothing to do."
+            echo "deploy=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Trusted copy of this repo, only for the config generator (no secrets in this job anyway).
+      - name: Check out this repo (scripts)
+        if: steps.decide.outputs.deploy == 'true'
+        uses: actions/checkout@v4
+        with:
+          path: trusted
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        if: steps.decide.outputs.deploy == 'true'
+        with:
+          node-version: 22
+
+      - name: Install and build (fork code, no secrets)
+        if: steps.decide.outputs.deploy == 'true'
+        working-directory: fork
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm run build
+          test -f dist/index.html || { echo "::error::The build did not produce dist/index.html"; exit 1; }
+
+      - name: Bundle the worker (generated config, pinned wrangler)
+        if: steps.decide.outputs.deploy == 'true'
+        run: |
+          rm -rf fork/out
+          node trusted/scripts/ami-wrangler-config.mjs --mode build --main fork/worker/index.ts --out fork/ami-build.wrangler.json
+          cd fork && npx --yes "$WRANGLER_PKG" deploy --dry-run --outdir out --config ami-build.wrangler.json
+          test -f out/index.js
+          mkdir -p migrations
+
+      - name: Upload build
+        if: steps.decide.outputs.deploy == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ami-site
+          path: |
+            fork/dist
+            fork/out
+            fork/migrations
+          if-no-files-found: error
+          retention-days: 3
+
+  deploy:
+    needs: build
+    if: needs.build.outputs.deploy == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check Cloudflare credentials
+        env:
+          TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$TOKEN" ] || [ -z "$ACCOUNT" ]; then
+            echo "::error::CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID are missing (see docs/MISE-EN-LIGNE.md, part A)."; exit 1
+          fi
+
+      # Only this repo's code is checked out here; the fork arrives as plain files.
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: ami-site
+          path: site
+
+      - name: Prepare deployment config
+        run: |
+          if [ -n "$(find site -type l)" ]; then echo "::error::Symbolic links are not allowed in the build."; exit 1; fi
+          test -f site/out/index.js
+          test -d site/dist
+          node scripts/ami-wrangler-config.mjs --mode deploy --main site/out/index.js --assets site/dist \
+            --migrations site/migrations --out site/wrangler.json
+          cat site/wrangler.json
+
+      - name: Apply database migrations (flonary-ami only)
+        working-directory: site
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if ls migrations/*.sql >/dev/null 2>&1; then
+            npx --yes "$WRANGLER_PKG" d1 migrations apply DB --remote --config wrangler.json
+          else
+            echo "No migrations."
+          fi
+
+      - name: Deploy
+        working-directory: site
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes "$WRANGLER_PKG" deploy --config wrangler.json
+
+      - name: Copy secrets to the Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          SECRETS_KEY: ${{ secrets.AMI_SECRETS_KEY }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+        run: node scripts/sync-secrets.mjs --config site/wrangler.json
+
+      - name: Remember the deployed commit
+        run: mkdir -p .ami-deployed && echo "${{ needs.build.outputs.sha }}" > .ami-deployed/sha
+
+      - uses: actions/cache/save@v4
+        with:
+          path: .ami-deployed
+          key: ami-deployed-${{ needs.build.outputs.sha }}

@@ -52,21 +52,29 @@ Ouvre l'adresse, clique sur **« Créer un compte »**. **Chacun crée son propr
 
 ---
 
-## B. Côté ami (fork) — la version de l'ami, hébergée chez Guillaume
+## B. La version de l'ami, hébergée chez Guillaume
 
-L'ami a sa propre copie du code (un « fork ») et son propre site, avec sa propre base de données. Les deux versions évoluent indépendamment. La base de l'ami (`flonary-ami`) est **déjà créée** sur le Cloudflare de Guillaume.
+L'ami a sa propre copie du code (un « fork »), modifiée par son agent IA, et son propre site avec sa propre base de données (`flonary-ami`, **déjà créée**). La mise en ligne est faite par le dépôt de Guillaume : l'ami ne reçoit **jamais** la clé Cloudflare de Guillaume et ne peut toucher à rien d'autre.
 
-1. **Activer les automatisations du fork.** GitHub les désactive sur les forks. Ouvre l'onglet **« Actions »** de ton fork et clique sur le bouton vert **« I understand my workflows, go ahead and enable them »**.
-2. **Pointer vers ton site et ta base.** Dans `wrangler.toml` (ton agent IA peut le faire), remplace :
-   - `name = "flonary"` par `name = "flonary-ami"`
-   - `database_name = "flonary"` par `database_name = "flonary-ami"`
-   - le `database_id` par `f98ead9a-bfe1-4dcd-a1f2-aed01096f405`
-3. **Ajouter les secrets** dans ton fork : onglet **« Settings »** → menu de gauche **« Secrets and variables »** → **« Actions »** → **« New repository secret »**. Ajoute :
-   - `CLOUDFLARE_API_TOKEN` et `CLOUDFLARE_ACCOUNT_ID` : demande-les à Guillaume ;
-   - `SECRETS_KEY` : 40 caractères tapés au hasard ;
-   - ta propre clé de cours de bourse (partie C).
-4. **Publier** : pousse le changement de l'étape 2 sur `main` (ton agent le fait). Le site se met en ligne en 2 à 3 minutes, sur **https://flonary-ami.guillaume-astesana.workers.dev**
-5. Ouvre l'adresse et clique sur **« Créer un compte »**.
+**Côté ami (une seule fois)**
+
+1. Connecté à GitHub, ouvre https://github.com/guillaumeast/flonary et clique sur **« Fork »** (en haut à droite) → **« Create fork »**.
+2. Envoie à Guillaume le nom de ton fork, par exemple `ton-pseudo/flonary`. Rien d'autre à configurer (pas de secret, pas d'onglet Actions à activer).
+
+**Côté Guillaume (une seule fois)**
+
+3. Dans ton dépôt `guillaumeast/flonary` : **« Settings »** → menu de gauche **« Secrets and variables »** → **« Actions »** :
+   - onglet **« Variables »** → **« New repository variable »** → Name `AMI_REPO`, Value `ton-pseudo/flonary` (le nom envoyé par l'ami) → **« Add variable »** ;
+   - onglet **« Secrets »** → **« New repository secret »** → Name `AMI_SECRETS_KEY`, Secret : 40 caractères tapés au hasard (différents de ton `SECRETS_KEY`) → **« Add secret »**.
+
+**Ensuite, tout est automatique.** Chaque fois que l'ami (ou son agent) pousse sur la branche `main` de son fork, le site **https://flonary-ami.guillaume-astesana.workers.dev** est mis à jour dans les 30 minutes. Pour publier tout de suite : dans le dépôt de Guillaume, onglet **« Actions »** → **« Deploy ami »** (à gauche) → **« Run workflow »** → **« Run workflow »**.
+
+L'ami ouvre ensuite l'adresse, clique sur **« Créer un compte »**, et saisit sa clé de cours de bourse dans l'application (partie C).
+
+Bon à savoir :
+- La planification « toutes les 30 minutes » ne marche qu'une fois `deploy-ami.yml` présent sur la branche `main` de Guillaume.
+- Autre branche que `main` chez l'ami : ajouter une variable `AMI_BRANCH`.
+- Le site de l'ami utilise toujours le Worker `flonary-ami` et la base `flonary-ami`, quel que soit le contenu de son `wrangler.toml` (ignoré).
 
 ---
 
