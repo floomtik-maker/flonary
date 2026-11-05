@@ -34,5 +34,3 @@ EODHD_FUNDAMENTALS = "false"
 [triggers]
 crons = ["30 22 * * 1-5"]
 
-[observability]
-enabled = true
