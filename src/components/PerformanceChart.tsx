@@ -7,6 +7,8 @@ interface Props {
   height?: number;
   /** 'value' = portfolio value vs money invested; 'gain' = cumulative gain */
   mode?: 'value' | 'gain';
+  /** Optional comparison line (same EUR scale), e.g. the same flows invested in a world ETF */
+  compare?: { label: string; points: { date: string; value: number }[] };
 }
 
 /** Downsample to ~400 points so long histories stay smooth and fast. */
@@ -19,8 +21,9 @@ function thin(points: SeriesPoint[], max = 400): SeriesPoint[] {
   return out;
 }
 
-export function PerformanceChart({ points, height = 260, mode = 'value' }: Props) {
-  const data = thin(points);
+export function PerformanceChart({ points, height = 260, mode = 'value', compare }: Props) {
+  const cmp = compare ? new Map(compare.points.map((p) => [p.date, p.value])) : null;
+  const data: (SeriesPoint & { compare?: number })[] = cmp ? thin(points).map((p) => ({ ...p, compare: cmp.get(p.date) })) : thin(points);
   if (data.length < 2) return <div className="muted small" style={{ height, display: 'grid', placeItems: 'center' }}>Pas encore assez d'historique</div>;
   const spanDays = (Date.parse(data[data.length - 1].date) - Date.parse(data[0].date)) / 86_400_000;
   const tickFmt = (d: string) =>
@@ -43,7 +46,7 @@ export function PerformanceChart({ points, height = 260, mode = 'value' }: Props
             cursor={{ stroke: 'var(--text-3)', strokeWidth: 1 }}
             content={({ active, payload }) => {
               if (!active || !payload?.length) return null;
-              const p = payload[0].payload as SeriesPoint;
+              const p = payload[0].payload as SeriesPoint & { compare?: number };
               return (
                 <div className="tooltip num">
                   <div className="t-date">{date(p.date)}</div>
@@ -52,12 +55,20 @@ export function PerformanceChart({ points, height = 260, mode = 'value' }: Props
                   </div>
                   <div className="muted">Investi : {eur(p.contributions)}</div>
                   <div className={tone(p.gain)}>Gain : {signedEur(p.gain)}</div>
+                  {compare && p.compare != null && (
+                    <div className="muted">
+                      {compare.label} : {eur(p.compare)}
+                    </div>
+                  )}
                 </div>
               );
             }}
           />
           {mode === 'value' && (
             <Line type="monotone" dataKey="contributions" stroke="var(--contrib)" strokeWidth={1.5} strokeDasharray="4 4" dot={false} isAnimationActive={false} />
+          )}
+          {compare && mode === 'value' && (
+            <Line type="monotone" dataKey="compare" stroke="var(--series-2)" strokeWidth={1.5} dot={false} isAnimationActive={false} />
           )}
           <Area type="monotone" dataKey={key} stroke="var(--series-1)" strokeWidth={2} fill="url(#valueFill)" dot={false} activeDot={{ r: 4, strokeWidth: 2, stroke: 'var(--surface)' }} isAnimationActive={false} />
         </ComposedChart>

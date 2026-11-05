@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { usePortfolio } from '../lib/usePortfolio';
 import { useUpcomingEvents } from '../lib/useEvents';
@@ -7,6 +7,7 @@ import { PerformanceChart } from '../components/PerformanceChart';
 import { Avatar, Gain, PageLoading, Segmented } from '../components/ui';
 import { BROKER_LABELS, dateNoYear, eur, pct, signedPct } from '../lib/format';
 import { Welcome } from './Welcome';
+import { BENCHMARK_LABEL, simulateBenchmark } from '../../shared/benchmark';
 
 const PERIODS: { value: PeriodKey; label: string }[] = [
   { value: '1M', label: '1M' },
@@ -19,14 +20,21 @@ const PERIODS: { value: PeriodKey; label: string }[] = [
 export function Dashboard() {
   const { state, loading, error } = usePortfolio();
   const [period, setPeriod] = useState<PeriodKey>('1Y');
+  const [showBench, setShowBench] = useState(false);
   const { events } = useUpcomingEvents(state, 90);
+  const perf = useMemo(() => (state ? periodPerformance(state.result.series, period, state.today) : null), [state, period]);
+  // Same flows invested in the world ETF over the selected window (starts from the portfolio value)
+  const benchPeriod = useMemo(
+    () => (showBench && perf && state?.benchmark ? simulateBenchmark(perf.points, state.benchmark.prices) : null),
+    [showBench, perf, state],
+  );
 
   if (error) return <div className="card error">{error}</div>;
-  if (loading || !state) return <PageLoading />;
+  if (loading || !state || !perf) return <PageLoading />;
   if (state.data.transactions.length === 0) return <Welcome />;
 
-  const { summary, positions, accounts, series, warnings } = state.result;
-  const perf = periodPerformance(series, period, state.today);
+  const { summary, positions, accounts, warnings } = state.result;
+  const insights = buildInsights(state.benchmark?.result ?? null, positions, events);
   const realizedAndDiv = summary.realized + summary.dividends;
 
   return (
@@ -54,8 +62,8 @@ export function Dashboard() {
               <span className="spacer" />
               <Segmented value={period} options={PERIODS} onChange={setPeriod} />
             </div>
-            <PerformanceChart points={perf.points} />
-            <div className="legend" style={{ marginTop: 8 }}>
+            <PerformanceChart points={perf.points} compare={benchPeriod ? { label: BENCHMARK_LABEL, points: benchPeriod.series } : undefined} />
+            <div className="legend" style={{ marginTop: 8, alignItems: 'center' }}>
               <span>
                 <i style={{ background: 'var(--series-1)' }} />
                 Valeur
@@ -64,6 +72,23 @@ export function Dashboard() {
                 <i style={{ background: 'var(--contrib)' }} />
                 Argent investi
               </span>
+              {benchPeriod && (
+                <span>
+                  <i style={{ background: 'var(--series-2)' }} />
+                  {BENCHMARK_LABEL}
+                </span>
+              )}
+              {state.benchmark && (
+                <button
+                  type="button"
+                  className="chip"
+                  aria-pressed={showBench}
+                  onClick={() => setShowBench((v) => !v)}
+                  style={{ marginLeft: 'auto', border: '1px solid var(--border)', cursor: 'pointer', ...(showBench ? { background: 'var(--series-2)', color: '#fff', borderColor: 'transparent' } : {}) }}
+                >
+                  Comparer à l'{BENCHMARK_LABEL}
+                </button>
+              )}
             </div>
 
             <div className="kpis">
@@ -124,6 +149,21 @@ export function Dashboard() {
         </div>
 
         <div className="stack">
+          {insights.length > 0 && (
+            <section className="card">
+              <div className="card-title">À retenir</div>
+              <div className="list">
+                {insights.map((t, i) => (
+                  <div className="row" key={i} style={{ minHeight: 0 }}>
+                    <div className="row-main small" style={{ color: 'var(--text-2)' }}>
+                      {t}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
           <section className="card">
             <div className="card-title">Comptes</div>
             <div className="list">
@@ -177,4 +217,40 @@ export function Dashboard() {
       </div>
     </>
   );
+}
+
+type Insight = ReactNode;
+
+/** At most 3 one-line takeaways computed from the data. */
+function buildInsights(
+  bench: ReturnType<typeof simulateBenchmark>,
+  positions: { name: string; weight: number }[],
+  events: { kind: string; date: string; expectedEUR?: number | null }[],
+): Insight[] {
+  const out: Insight[] = [];
+  if (bench && Math.abs(bench.difference) >= 1) {
+    const better = bench.difference > 0;
+    out.push(
+      <>
+        Vous faites <b className={better ? 'up' : 'down'}>{better ? '+' : '−'}{eur(Math.abs(bench.difference), { cents: false })}</b> {better ? 'de plus' : 'de moins'} qu'un {BENCHMARK_LABEL} depuis le début
+      </>,
+    );
+  }
+  const top = positions[0];
+  if (top && top.weight >= 0.1) {
+    out.push(
+      <>
+        {top.name} pèse <b>{pct(top.weight)}</b> du portefeuille
+      </>,
+    );
+  }
+  const div = events.find((e) => e.kind !== 'earnings' && e.expectedEUR);
+  if (div) {
+    out.push(
+      <>
+        Prochain dividende : <b className="up">{eur(div.expectedEUR!)}</b> le {dateNoYear(div.date)}
+      </>,
+    );
+  }
+  return out.slice(0, 3);
 }
