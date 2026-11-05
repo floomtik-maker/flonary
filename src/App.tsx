@@ -1,18 +1,23 @@
+import { lazy, Suspense } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { BrowserRouter, HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { useBackend } from './api';
 import { Layout } from './components/Layout';
 import { Dashboard } from './pages/Dashboard';
-import { Positions } from './pages/Positions';
-import { PositionDetail } from './pages/PositionDetail';
-import { Transactions } from './pages/Transactions';
-import { Analysis } from './pages/Analysis';
-import { CalendarPage } from './pages/CalendarPage';
-import { Projection } from './pages/Projection';
-import { Accounts } from './pages/Accounts';
-import { More } from './pages/More';
 import { Login } from './pages/Login';
 import { PageLoading } from './components/ui';
+
+// Route-level code splitting: only the dashboard (landing page) and login ship in the main bundle.
+const Positions = lazy(() => import('./pages/Positions').then((m) => ({ default: m.Positions })));
+const PositionDetail = lazy(() => import('./pages/PositionDetail').then((m) => ({ default: m.PositionDetail })));
+const Transactions = lazy(() => import('./pages/Transactions').then((m) => ({ default: m.Transactions })));
+const Analysis = lazy(() => import('./pages/Analysis').then((m) => ({ default: m.Analysis })));
+const CalendarPage = lazy(() => import('./pages/CalendarPage').then((m) => ({ default: m.CalendarPage })));
+const Projection = lazy(() => import('./pages/Projection').then((m) => ({ default: m.Projection })));
+const Accounts = lazy(() => import('./pages/Accounts').then((m) => ({ default: m.Accounts })));
+const More = lazy(() => import('./pages/More').then((m) => ({ default: m.More })));
+
+const page = (el: React.ReactNode) => <Suspense fallback={<PageLoading />}>{el}</Suspense>;
 
 export function App() {
   const backend = useBackend();
@@ -43,14 +48,14 @@ export function App() {
       <Routes>
         <Route element={<Layout />}>
           <Route index element={<Dashboard />} />
-          <Route path="positions" element={<Positions />} />
-          <Route path="positions/:symbol" element={<PositionDetail />} />
-          <Route path="mouvements" element={<Transactions />} />
-          <Route path="analyse" element={<Analysis />} />
-          <Route path="calendrier" element={<CalendarPage />} />
-          <Route path="projection" element={<Projection />} />
-          <Route path="comptes" element={<Accounts />} />
-          <Route path="plus" element={<More />} />
+          <Route path="positions" element={page(<Positions />)} />
+          <Route path="positions/:symbol" element={page(<PositionDetail />)} />
+          <Route path="mouvements" element={page(<Transactions />)} />
+          <Route path="analyse" element={page(<Analysis />)} />
+          <Route path="calendrier" element={page(<CalendarPage />)} />
+          <Route path="projection" element={page(<Projection />)} />
+          <Route path="comptes" element={page(<Accounts />)} />
+          <Route path="plus" element={page(<More />)} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
