@@ -75,6 +75,8 @@ Flux : l'UI charge `/api/data` (comptes, opérations, instruments, valorisations
 ## Environnement
 
 - `wrangler.toml` : base D1 `flonary` (compte Cloudflare de Guillaume, région WEUR), `ALLOW_SIGNUP="false"` (seul le premier compte peut s'inscrire).
+- Mise en ligne pas à pas pour l'utilisateur (non-développeur) : `docs/MISE-EN-LIGNE.md`. Le guider avec ce document, étape par étape, en expliquant chaque commande avant de la lancer.
+- EODHD : l'offre gratuite (20 appels/jour) ne sert qu'à tester ; l'offre « EOD Historical All-World » (19,99 $/mois) n'inclut ni `/fundamentals` (10 appels) ni le calendrier des résultats → désactivés par défaut (`EODHD_FUNDAMENTALS="false"`). Économiser les appels : tout passe par le cache D1 (`worker/market/cache.ts`).
 - Secrets : `SECRETS_KEY` (chiffre les jetons IBKR en AES-GCM), `EODHD_API_KEY` et/ou `TWELVEDATA_API_KEY`. En local : `.dev.vars` (voir `.dev.vars.example`). La clé `demo` d'EODHD fonctionne pour quelques tickers US (AAPL, MSFT…) : pratique pour tester.
 - La migration `0001_init.sql` est déjà appliquée sur la base distante.
 

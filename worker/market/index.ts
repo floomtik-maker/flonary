@@ -12,7 +12,7 @@ const H = 60 * 60_000;
 
 export function providers(env: Env): MarketProvider[] {
   const list: MarketProvider[] = [];
-  if (env.EODHD_API_KEY) list.push(eodhd(env.EODHD_API_KEY));
+  if (env.EODHD_API_KEY) list.push(eodhd(env.EODHD_API_KEY, { fundamentals: env.EODHD_FUNDAMENTALS === 'true' }));
   if (env.TWELVEDATA_API_KEY) list.push(twelveData(env.TWELVEDATA_API_KEY));
   return list;
 }
@@ -81,7 +81,7 @@ export async function getQuotes(env: Env, symbolsParam: string | null): Promise<
   const out: Record<string, Quote> = {};
   await mapLimit(symbols, 4, async (symbol) => {
     try {
-      out[symbol] = await cached(env.DB, `quote:v1:${symbol}`, 10 * 60_000, () => firstOk(env, (p) => p.quote(symbol)));
+      out[symbol] = await cached(env.DB, `quote:v1:${symbol}`, 15 * 60_000, () => firstOk(env, (p) => p.quote(symbol)));
     } catch {
       /* the UI falls back to the last close */
     }

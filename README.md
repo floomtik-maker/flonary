@@ -62,6 +62,8 @@ npm run smoke    # test de bout en bout (wrangler dev lancé + Playwright instal
 
 ## Mise en ligne (Cloudflare)
 
+👉 **Guide pas à pas pour non-développeurs : [docs/MISE-EN-LIGNE.md](docs/MISE-EN-LIGNE.md)** (création des comptes, clé des cours, chaque commande expliquée). Résumé technique ci-dessous.
+
 L'appli tourne sur un **Cloudflare Worker** (gratuit pour un usage perso) avec une base **D1**. La base `flonary` existe déjà sur le compte Cloudflare de Guillaume (identifiant dans `wrangler.toml`) et son schéma est appliqué.
 
 ```bash
@@ -94,8 +96,10 @@ Les cours viennent d'API officielles (pas de scraping) ; il faut au moins une cl
 
 | Variable | Fournisseur | Couverture | Gratuit |
 |---|---|---|---|
-| `EODHD_API_KEY` (recommandé) | [EODHD](https://eodhd.com) | Monde (US, Euronext, Xetra, LSE…), dividendes, splits, calendrier | 20 requêtes/jour, 1 an d'historique ; offre « EOD All World » ~20 €/mois pour un usage réel |
+| `EODHD_API_KEY` (recommandé) | [EODHD](https://eodhd.com) | Monde (US, Euronext, Xetra, LSE…), dividendes, splits | 20 appels/jour, 1 an d'historique, sans carte (test uniquement) ; « EOD Historical All-World » 19,99 $/mois, 100 000 appels/jour |
 | `TWELVEDATA_API_KEY` | [Twelve Data](https://twelvedata.com) | Surtout US en gratuit | 800 requêtes/jour |
+
+Avec EODHD, le pays/secteur et les dates de résultats nécessitent l'offre « Fundamentals » : mettre alors `EODHD_FUNDAMENTALS = "true"` dans `wrangler.toml`. Sinon le pays est déduit du ticker (modifiable dans la fiche du titre) et le calendrier affiche les dividendes uniquement.
 
 Les deux peuvent être configurées : EODHD est essayé d'abord, Twelve Data ensuite. Les réponses sont mises en cache dans D1 (6 h pour l'historique, 10 min pour les cours), et en cas de panne le dernier cours connu est utilisé. Les taux de change viennent de la BCE (Frankfurter, sans clé). Sans aucune clé, l'appli fonctionne quand même : chaque titre est valorisé à son dernier prix saisi.
 

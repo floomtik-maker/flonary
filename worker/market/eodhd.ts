@@ -48,7 +48,12 @@ export function parseSplit(s: string): number {
   return a > 0 && b > 0 ? a / b : 1;
 }
 
-export function eodhd(apiKey: string): MarketProvider {
+/**
+ * `fundamentals` enables /fundamentals (country, sector — costs 10 calls) and /calendar/earnings.
+ * Neither is included in the "EOD Historical All-World" plan, so they are off by default
+ * (country is then guessed from the ticker suffix and earnings dates are not shown).
+ */
+export function eodhd(apiKey: string, opts: { fundamentals?: boolean } = {}): MarketProvider {
   const url = (path: string, params: Record<string, string> = {}) =>
     `${BASE}${path}?${new URLSearchParams({ api_token: apiKey, fmt: 'json', ...params })}`;
 
@@ -100,8 +105,12 @@ export function eodhd(apiKey: string): MarketProvider {
       const events: CalendarEvent[] = [];
       const until = `${Number(today.slice(0, 4)) + 1}${today.slice(4)}`;
       const [general, earnings, divs] = await Promise.all([
-        getJson<Record<string, string | null>>(url(`/fundamentals/${t}`, { filter: 'General' }), 'EODHD fundamentals').catch(() => null),
-        getJson<{ earnings?: { report_date: string }[] }>(url('/calendar/earnings', { symbols: t, from: today, to: until }), 'EODHD earnings').catch(() => null),
+        opts.fundamentals
+          ? getJson<Record<string, string | null>>(url(`/fundamentals/${t}`, { filter: 'General' }), 'EODHD fundamentals').catch(() => null)
+          : Promise.resolve(null),
+        opts.fundamentals
+          ? getJson<{ earnings?: { report_date: string }[] }>(url('/calendar/earnings', { symbols: t, from: today, to: until }), 'EODHD earnings').catch(() => null)
+          : Promise.resolve(null),
         getJson<DivRow[]>(url(`/div/${t}`, { from: today }), 'EODHD div').catch(() => [] as DivRow[]),
       ]);
       for (const e of earnings?.earnings ?? []) if (e.report_date >= today) events.push({ symbol, date: e.report_date, kind: 'earnings' });
