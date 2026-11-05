@@ -1,9 +1,10 @@
-import type { Backend, Connection, UserData } from '../api/backend';
+import type { Backend, Connection, Goal, UserData } from '../api/backend';
 import type { InstrumentProfile, PriceHistory, Quote } from '../../shared/types';
 import { toISODate } from '../../shared/series';
 import { DEMO_CATALOG, buildDemoData, syntheticEvents, syntheticFx, syntheticHistory, type DemoInstrumentSpec } from './demoData';
 
 const KEY = 'flonary-demo-v1';
+const GOAL_KEY = 'flonary-demo-goal-v1';
 const today = () => toISODate(new Date());
 
 function load(): UserData {
@@ -177,4 +178,23 @@ export const demoBackend: Backend = {
   },
   deleteConnection: async () => {},
   syncConnection: async () => ({ imported: 0, skipped: 0, message: 'Mode démo' }),
+
+  marketSettings: () => delay({ configured: true, source: 'demo' as const, plan: 'free' as const }, 0),
+  saveMarketSettings: () => delay({ configured: true, source: 'demo' as const, plan: 'free' as const }),
+  goal: async () => {
+    try {
+      const raw = localStorage.getItem(GOAL_KEY);
+      return raw ? (JSON.parse(raw) as Goal) : null;
+    } catch {
+      return null;
+    }
+  },
+  saveGoal: async (g) => {
+    try {
+      localStorage.setItem(GOAL_KEY, JSON.stringify(g));
+    } catch {
+      /* ignore */
+    }
+    return delay(g);
+  },
 };

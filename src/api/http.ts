@@ -67,4 +67,9 @@ export const httpBackend: Backend = {
   saveConnection: (c) => call('POST', '/connections', c),
   deleteConnection: (id) => call('DELETE', `/connections/${encodeURIComponent(id)}`),
   syncConnection: (id) => call('POST', `/connections/${encodeURIComponent(id)}/sync`),
+
+  marketSettings: () => call('GET', '/settings/market'),
+  saveMarketSettings: (s) => call('PUT', '/settings/market', s),
+  goal: () => call('GET', '/settings/goal'),
+  saveGoal: (g) => call('PUT', '/settings/goal', g),
 };

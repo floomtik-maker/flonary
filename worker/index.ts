@@ -15,6 +15,7 @@ import { syncIbkr } from './connectors/ibkr';
 import { googleCallback, googleEnabled, googleStart } from './google';
 import { guessCountry } from '../shared/geo';
 import type { Instrument } from '../shared/types';
+import { getGoal, marketSettings, saveGoal, saveMarketSettings, validateGoal, withMarketKey } from './settings';
 
 const app = new Hono<AppEnv>().basePath('/api');
 
@@ -39,6 +40,14 @@ const body = async <T = Record<string, unknown>>(c: { req: { json: () => Promise
     throw new HttpError(400, 'Corps JSON invalide');
   }
 };
+
+// Market routes see the key pasted in the app (app_settings) when no secret is set.
+const loadMarketKey = async (c: { env: Env }, next: () => Promise<void>) => {
+  c.env = await withMarketKey(c.env);
+  await next();
+};
+app.use('/health', loadMarketKey);
+app.use('/market/*', loadMarketKey);
 
 // ---------------------------------------------------------------- health
 app.get('/health', async (c) => {
@@ -193,6 +202,16 @@ api.get('/market/profile', async (c) => {
   return c.json(await profile(c.env, symbol));
 });
 
+// ---------------------------------------------------------------- settings
+api.get('/settings/market', async (c) => c.json(await marketSettings(c.env)));
+api.put('/settings/market', async (c) => c.json(await saveMarketSettings(c.env, await body(c))));
+api.get('/settings/goal', async (c) => c.json(await getGoal(c.env.DB, c.var.userId)));
+api.put('/settings/goal', async (c) => {
+  const goal = validateGoal(await body(c));
+  await saveGoal(c.env.DB, c.var.userId, goal);
+  return c.json(goal);
+});
+
 // ---------------------------------------------------------------- broker connections
 api.get('/connections', async (c) => {
   const rows = await c.env.DB.prepare('SELECT id, provider, account_id, label, last_sync, last_status FROM connections WHERE user_id = ? ORDER BY created_at').bind(c.var.userId).all();
@@ -257,6 +276,6 @@ export default {
   fetch: app.fetch,
   /** Cron (wrangler.toml [triggers]): refresh held tickers every weekday evening after the US close. */
   async scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext) {
-    ctx.waitUntil(refreshAll(env).then((r) => console.log('market refresh', r)));
+    ctx.waitUntil(withMarketKey(env).then(refreshAll).then((r) => console.log('market refresh', r)));
   },
 } satisfies ExportedHandler<Env>;
