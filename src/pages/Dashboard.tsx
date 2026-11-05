@@ -232,7 +232,7 @@ function buildInsights(
     const better = bench.difference > 0;
     out.push(
       <>
-        Vous faites <b className={better ? 'up' : 'down'}>{better ? '+' : '−'}{eur(Math.abs(bench.difference), { cents: false })}</b> {better ? 'de plus' : 'de moins'} qu'un {BENCHMARK_LABEL} depuis le début
+        Vous faites <b className={better ? 'up' : 'down'}>{eur(Math.abs(bench.difference), { cents: false })}</b> {better ? 'de plus' : 'de moins'} qu'un {BENCHMARK_LABEL} depuis le début
       </>,
     );
   }
