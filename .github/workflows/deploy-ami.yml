@@ -115,22 +115,23 @@ jobs:
         with:
           node-version: 22
 
-      - name: Install and build (fork code, no secrets)
-        if: steps.decide.outputs.deploy == 'true'
-        working-directory: fork
-        run: |
-          npm ci --ignore-scripts --no-audit --no-fund
-          npm run build
-          test -f dist/index.html || { echo "::error::The build did not produce dist/index.html"; exit 1; }
-
-      - name: Bundle the worker (generated config, pinned wrangler)
+      # The fork's code (npm scripts, vite config, a local wrangler…) runs ONLY inside an
+      # unprivileged container: on the runner itself it could use sudo to read the Actions
+      # runtime token and poison the cache of the main branch (setup-node `cache: npm` in
+      # deploy.yml, which holds CLOUDFLARE_API_TOKEN).
+      - name: Install, build and bundle (fork code, isolated container, no secrets)
         if: steps.decide.outputs.deploy == 'true'
         run: |
           rm -rf fork/out
           node trusted/scripts/ami-wrangler-config.mjs --mode build --main fork/worker/index.ts --out fork/ami-build.wrangler.json
-          cd fork && npx --yes "$WRANGLER_PKG" deploy --dry-run --outdir out --config ami-build.wrangler.json
-          test -f out/index.js
-          mkdir -p migrations
+          docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -e CI=true -e WRANGLER_SEND_METRICS=false \
+            -e WRANGLER_PKG -v "$PWD/fork:/w" -w /w node:22 sh -ec '
+              npm ci --ignore-scripts --no-audit --no-fund
+              npm run build
+              test -f dist/index.html || { echo "The build did not produce dist/index.html"; exit 1; }
+              npx --yes "$WRANGLER_PKG" deploy --dry-run --outdir out --config ami-build.wrangler.json
+              test -f out/index.js'
+          mkdir -p fork/migrations
 
       - name: Upload build
         if: steps.decide.outputs.deploy == 'true'

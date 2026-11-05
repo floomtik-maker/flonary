@@ -72,7 +72,16 @@ export async function googleCallback(c: Context<AppEnv>) {
   const email = String(claims.email ?? '').toLowerCase();
   if (!email || claims.email_verified !== true) return fail('Adresse e-mail Google non vérifiée.');
 
-  let user = await c.env.DB.prepare('SELECT id FROM users WHERE email = ?').bind(email).first<{ id: string }>();
+  let user = await c.env.DB.prepare('SELECT id, password_hash FROM users WHERE email = ?').bind(email).first<{ id: string; password_hash: string }>();
+  if (user && user.password_hash !== 'google') {
+    // Sign-up by password never verifies the e-mail: someone may have pre-registered this
+    // address to spy on its future owner. Google proves ownership, so the password (unknown
+    // to the real owner, or not) is revoked along with every open session.
+    await c.env.DB.batch([
+      c.env.DB.prepare("UPDATE users SET password_hash = 'google', password_salt = '', password_iterations = 0 WHERE id = ?").bind(user.id),
+      c.env.DB.prepare('DELETE FROM sessions WHERE user_id = ?').bind(user.id),
+    ]);
+  }
   if (!user) {
     try {
       assertSignupAllowed(c.env, email);
@@ -84,7 +93,7 @@ export async function googleCallback(c: Context<AppEnv>) {
     await c.env.DB.prepare('INSERT INTO users (id, email, password_hash, password_salt, password_iterations) VALUES (?, ?, ?, ?, ?)')
       .bind(id, email, 'google', '', 0)
       .run();
-    user = { id };
+    user = { id, password_hash: 'google' };
   }
   await createSession(c, user.id);
   return c.redirect('/');
