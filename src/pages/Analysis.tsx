@@ -3,9 +3,10 @@ import { Link } from 'react-router-dom';
 import { usePortfolio } from '../lib/usePortfolio';
 import { computeSignals, concentration, maxDrawdown, RISK_LABELS, riskClass } from '../../shared/analysis';
 import { regionOf } from '../../shared/geo';
+import { computeTax, envelopeOf, isTaxableEachYear } from '../../shared/tax';
 import { addMonths } from '../../shared/series';
 import { BarList, Empty, PageLoading, Segmented } from '../components/ui';
-import { ASSET_CLASS_LABELS, BROKER_LABELS, pct, signedPct } from '../lib/format';
+import { ASSET_CLASS_LABELS, BROKER_LABELS, eur, pct, signedEur, signedPct, tone } from '../lib/format';
 
 type Dim = 'region' | 'country' | 'sector' | 'asset' | 'currency' | 'account';
 const DIMS: { value: Dim; label: string }[] = [
@@ -89,7 +90,15 @@ export function Analysis() {
     const unknown = exposures.country.find((c) => c.label === 'Non renseigné');
     if (unknown && unknown.value > 0.05) alerts.push(`${pct(unknown.value)} sans pays renseigné : complétez la fiche des titres pour affiner l'exposition.`);
 
-    return { exposures, vol, mdd, conc, annualized, signals, perPosRisk, alerts };
+    const tax = computeTax({ transactions: state.data.transactions, accounts: state.data.accounts, fx: state.fx, today: state.today, prices: state.histories });
+    const hasTaxable = state.data.accounts.some((a) => isTaxableEachYear(envelopeOf(a.kind)));
+    const feeByAccount = tax.accounts
+      .filter((a) => a.invested > 0)
+      .map((a) => ({ name: state.data.accounts.find((x) => x.id === a.account_id)?.name ?? '—', pct: a.fees / a.invested }))
+      .sort((x, y) => y.pct - x.pct);
+    const highFees = feeByAccount.filter((a) => a.pct > 0.01);
+
+    return { exposures, vol, mdd, conc, annualized, signals, perPosRisk, alerts, tax, hasTaxable, highFees };
   }, [state]);
 
   if (error) return <div className="card error">{error}</div>;
@@ -162,6 +171,42 @@ export function Analysis() {
               </table>
             </div>
           </section>
+
+          <section className="card">
+            <div className="card-title">Plus-values réalisées par année</div>
+            {analysis.tax.years.length === 0 ? (
+              <p className="muted small">Aucune vente ni dividende pour l'instant.</p>
+            ) : (
+              <div className="table-wrap">
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>Année</th>
+                      <th className="r">Plus-values</th>
+                      {analysis.hasTaxable && <th className="r" title="Comptes-titres uniquement : montant à reporter (formulaire 2074, case 3VG ou 3VH)">dont CTO</th>}
+                      <th className="r">Dividendes</th>
+                      <th className="r">Frais</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {analysis.tax.years.map((y) => {
+                      const cto = analysis.tax.taxableYears.find((t) => t.year === y.year);
+                      return (
+                        <tr key={y.year}>
+                          <td>{y.year}</td>
+                          <td className={`r num ${tone(y.realized)}`}>{signedEur(y.realized)}</td>
+                          {analysis.hasTaxable && <td className={`r num ${tone(cto?.realized ?? 0)}`}>{cto ? signedEur(cto.realized) : '—'}</td>}
+                          <td className="r num">{eur(y.dividends)}</td>
+                          <td className="r num">{eur(y.fees)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {analysis.hasTaxable && <p className="hint">Colonne CTO : à déclarer (2074 · case 3VG si gain, 3VH si perte, reportable 10 ans).</p>}
+          </section>
         </div>
 
         <div className="stack">
@@ -197,6 +242,37 @@ export function Analysis() {
                 <span className="num">{analysis.conc.effective.toFixed(1)} lignes</span>
               </div>
             </div>
+          </section>
+          <section className="card">
+            <div className="card-title">Frais &amp; impôts</div>
+            <div className="list">
+              <div className="row">
+                <div className="row-main">Frais payés</div>
+                <span className="num">{eur(analysis.tax.fees)}</span>
+              </div>
+              <div className="row">
+                <div className="row-main" title="Frais de courtage et frais de compte / montant investi">Frais / investi</div>
+                <span className={`num ${analysis.tax.feesPct > 0.01 ? 'down' : ''}`}>{pct(analysis.tax.feesPct)}</span>
+              </div>
+              <div className="row">
+                <div className="row-main">Plus-values réalisées {analysis.tax.currentYear}</div>
+                <span className={`num ${tone(analysis.tax.realizedThisYear)}`}>{signedEur(analysis.tax.realizedThisYear)}</span>
+              </div>
+              <div className="row">
+                <div className="row-main" title="Flat tax 30 % (12,8 % impôt + 17,2 % prélèvements sociaux) sur plus-values nettes et dividendes du CTO">
+                  Impôt estimé {analysis.tax.currentYear}
+                </div>
+                <span className="num">≈ {eur(analysis.tax.estimatedTax)}</span>
+              </div>
+            </div>
+            {analysis.highFees.length > 0 && (
+              <p className="small" style={{ marginBottom: 0 }}>
+                <span className="pill warn">Frais élevés</span> {analysis.highFees.map((a) => `${a.name} ${pct(a.pct)}`).join(' · ')}
+              </p>
+            )}
+            <p className="hint" style={{ marginBottom: 0 }}>
+              Estimation : flat tax 30 % sur le CTO. PEA/PEE : exonéré tant que vous ne retirez pas (PEA après 5 ans : 17,2 % de prélèvements sociaux au retrait).
+            </p>
           </section>
           <section className="card">
             <div className="card-title">Points d'attention</div>
