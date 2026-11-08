@@ -5,6 +5,7 @@ import { useBackend } from '../api';
 import { useUserData } from '../lib/usePortfolio';
 import { TransactionForm } from '../components/TransactionForm';
 import { Empty, Modal, PageLoading } from '../components/ui';
+import { PageHeader } from '../components/PageHeader';
 import { IconPlus, IconTrash, IconUpload } from '../components/Icons';
 import { TX_LABELS, date, money, qty } from '../lib/format';
 import type { Transaction } from '../../shared/types';
@@ -54,20 +55,22 @@ export function Transactions() {
 
   return (
     <>
-      <div className="page-head">
-        <h1>Mouvements</h1>
-        <div className="toolbar">
-          <Link className="btn" to="/comptes?import=1">
-            <IconUpload width={16} height={16} /> Importer
-          </Link>
-          <button className="btn primary" onClick={() => setEditing('new')}>
-            <IconPlus width={16} height={16} /> Ajouter
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title="Mouvements"
+        search={{ value: text, onChange: setText, placeholder: 'Rechercher un titre…' }}
+        actions={
+          <>
+            <Link className="btn" to="/comptes?import=1">
+              <IconUpload width={16} height={16} /> Importer
+            </Link>
+            <button className="btn primary" onClick={() => setEditing('new')}>
+              <IconPlus width={16} height={16} /> Ajouter
+            </button>
+          </>
+        }
+      />
 
       <div className="toolbar" style={{ marginBottom: 12 }}>
-        <input className="input" style={{ maxWidth: 240 }} placeholder="Rechercher un titre…" value={text} onChange={(e) => setText(e.target.value)} />
         <select className="input" style={{ maxWidth: 200 }} value={account} onChange={(e) => setAccount(e.target.value)}>
           <option value="">Tous les comptes</option>
           {data.accounts.map((a) => (

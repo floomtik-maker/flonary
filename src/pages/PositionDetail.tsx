@@ -11,7 +11,7 @@ import type { AssetClass, Instrument } from '../../shared/types';
 import { PriceChart } from '../components/PriceChart';
 import { TransactionForm } from '../components/TransactionForm';
 import { Avatar, Gain, Modal, PageLoading, Segmented } from '../components/ui';
-import { IconBack } from '../components/Icons';
+import { PageHeader } from '../components/PageHeader';
 import { ASSET_CLASS_LABELS, TX_LABELS, date, eur, money, pct, qty } from '../lib/format';
 
 type Range = '6M' | '1Y' | '5Y';
@@ -53,26 +53,24 @@ export function PositionDetail() {
 
   return (
     <>
-      <div className="page-head">
-        <div className="toolbar">
-          <Link to="/positions" className="btn ghost small" aria-label="Retour">
-            <IconBack width={18} height={18} />
-          </Link>
-          <Avatar symbol={symbol} name={position.name} />
-          <div>
-            <h1>{position.name}</h1>
-            <div className="muted small">
-              {manual ? 'Valorisation manuelle' : symbol} · {ASSET_CLASS_LABELS[inst.asset_class]} {inst.country ? `· ${inst.country}` : ''} {inst.sector ? `· ${inst.sector}` : ''}
-            </div>
-          </div>
-        </div>
-        <div className="toolbar">
-          <button className="btn small" onClick={() => setEditing(true)}>
-            Modifier la fiche
-          </button>
-          <button className="btn small primary" onClick={() => setAddingTx(true)}>
-            + Achat / vente
-          </button>
+      <PageHeader
+        title={position.name}
+        crumbs={[{ label: 'Positions', to: '/positions' }]}
+        actions={
+          <>
+            <button className="btn small" onClick={() => setEditing(true)}>
+              Modifier la fiche
+            </button>
+            <button className="btn small primary" onClick={() => setAddingTx(true)}>
+              + Achat / vente
+            </button>
+          </>
+        }
+      />
+      <div className="toolbar" style={{ marginTop: -12, marginBottom: 20 }}>
+        <Avatar symbol={symbol} name={position.name} />
+        <div className="muted small">
+          {manual ? 'Valorisation manuelle' : symbol} · {ASSET_CLASS_LABELS[inst.asset_class]} {inst.country ? `· ${inst.country}` : ''} {inst.sector ? `· ${inst.sector}` : ''}
         </div>
       </div>
 

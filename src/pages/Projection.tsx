@@ -3,6 +3,7 @@ import { Area, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip,
 import { usePortfolio } from '../lib/usePortfolio';
 import { project } from '../../shared/analysis';
 import { PageLoading } from '../components/ui';
+import { PageHeader } from '../components/PageHeader';
 import { compactEur, eur, pct } from '../lib/format';
 import { parseNumber } from '../../shared/importers/csv';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -46,9 +47,7 @@ export function Projection() {
 
   return (
     <>
-      <div className="page-head">
-        <h1>Projection</h1>
-      </div>
+      <PageHeader title="Projection" />
       <div className="grid grid-main">
         <section className="card">
           <div className="hero-label">Dans {years} ans, votre portefeuille pourrait valoir</div>

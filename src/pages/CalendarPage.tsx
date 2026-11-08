@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { usePortfolio } from '../lib/usePortfolio';
 import { useUpcomingEvents } from '../lib/useEvents';
 import { Empty, PageLoading, Segmented } from '../components/ui';
+import { PageHeader } from '../components/PageHeader';
 import { dateNoYear, eur, monthLabel } from '../lib/format';
 import { DividendIncome } from '../components/DividendIncome';
 
@@ -25,18 +26,20 @@ export function CalendarPage() {
 
   return (
     <>
-      <div className="page-head">
-        <h1>Calendrier</h1>
-        <Segmented
-          value={filter}
-          onChange={setFilter}
-          options={[
-            { value: 'all', label: 'Tout' },
-            { value: 'div', label: 'Dividendes' },
-            { value: 'earnings', label: 'Résultats' },
-          ]}
-        />
-      </div>
+      <PageHeader
+        title="Calendrier"
+        actions={
+          <Segmented
+            value={filter}
+            onChange={setFilter}
+            options={[
+              { value: 'all', label: 'Tout' },
+              { value: 'div', label: 'Dividendes' },
+              { value: 'earnings', label: 'Résultats' },
+            ]}
+          />
+        }
+      />
       <DividendIncome state={state} events={events} />
       <section className="card">
         {evLoading && list.length === 0 && <p className="muted">Chargement des événements…</p>}

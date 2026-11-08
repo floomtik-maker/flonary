@@ -37,7 +37,9 @@ src/               Front React 18 + react-router 6 + TanStack Query 5 + Recharts
   api/http.ts      Implémentation réelle (fetch /api/*)
   demo/            Implémentation démo (données synthétiques déterministes, localStorage)
   lib/usePortfolio.ts  Charge données + cours + FX, lance le moteur (le calcul est fait côté client)
-  pages/, components/
+  lib/nav.ts       Navigation unique (menu court, méga-menu en colonnes, barre mobile, page « Plus »)
+  lib/positionMetrics.ts  Chiffres par position pour les vues du tableau Positions (affichage seulement, ne touche pas au moteur)
+  pages/, components/  Layout = en-tête (menu + méga-menu + thème clair/sombre) ; PageHeader = fil d'Ariane + titre + recherche ; ui.tsx = Tabs, DataTable (tableau dense triable)
 worker/            Cloudflare Worker (Hono) : /api/* ; les assets (dist/) sont servis par le binding ASSETS
   index.ts         Routes
   auth.ts          Comptes e-mail/mot de passe (PBKDF2), sessions en cookie HttpOnly (hash SHA-256 en base), CSRF par vérification d'Origin
