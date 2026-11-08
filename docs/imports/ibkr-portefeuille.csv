@@ -1,0 +1,20 @@
+date;type;symbol;name;quantity;price;currency;amount
+2026-01-02;Achat;ALMDT.PA;Median Technologies;750;3.704667;EUR;
+2026-01-02;Achat;ALSTI.PA;STIF SA;9;69.333333;EUR;
+2026-01-02;Achat;EL.PA;EssilorLuxottica;25;190.400000;EUR;
+2026-01-02;Achat;NOV.DE;Novo Nordisk B;21;64.910476;EUR;
+2026-01-02;Achat;1810.HK;Xiaomi Corp - Class B;400;43.151225;HKD;
+2026-01-02;Achat;AAOI;Applied Optoelectronics;13;96.612308;USD;
+2026-01-02;Achat;AMZN;Amazon.com;10;246.770000;USD;
+2026-01-02;Achat;CMG;Chipotle Mexican Grill;60;36.036667;USD;
+2026-01-02;Achat;CRWV;CoreWeave;3;99.353333;USD;
+2026-01-02;Achat;HIMS;Hims & Hers Health;159;35.613019;USD;
+2026-01-02;Achat;MSFT;Microsoft;2;407.590000;USD;
+2026-01-02;Achat;NBIS;Nebius Group;20;122.576500;USD;
+2026-01-02;Achat;NOW;ServiceNow;23;102.701304;USD;
+2026-01-02;Achat;OSCR;Oscar Health;16;14.102500;USD;
+2026-01-02;Achat;SOFI;SoFi Technologies;184;16.961848;USD;
+2026-01-02;Achat;STRL;Sterling Infrastructure;5;533.050000;USD;
+2026-01-02;Achat;VRT;Vertiv Holdings;10;245.220000;USD;
+2026-01-02;Achat;ZETA;Zeta Global Holdings;6;19.736667;USD;
+2026-01-02;Deposit;;Liquidités EUR;;;EUR;1676.98
