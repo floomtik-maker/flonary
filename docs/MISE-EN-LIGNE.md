@@ -65,7 +65,6 @@ L'ami a sa propre copie du code (un « fork »), modifiée par son agent IA, et 
 
 3. Dans ton dépôt `guillaumeast/flonary` : **« Settings »** → menu de gauche **« Secrets and variables »** → **« Actions »** :
    - onglet **« Variables »** → **« New repository variable »** → Name `AMI_REPO`, Value `ton-pseudo/flonary` (le nom envoyé par l'ami) → **« Add variable »** ;
-   - onglet **« Secrets »** → **« New repository secret »** → Name `AMI_SECRETS_KEY`, Secret : 40 caractères tapés au hasard (différents de ton `SECRETS_KEY`) → **« Add secret »**.
 
 **Ensuite, tout est automatique.** Chaque fois que l'ami (ou son agent) pousse sur la branche `main` de son fork, le site **https://flonary-ami.guillaume-astesana.workers.dev** est mis à jour dans les 30 minutes. Pour publier tout de suite : dans le dépôt de Guillaume, onglet **« Actions »** → **« Deploy ami »** (à gauche) → **« Run workflow »** → **« Run workflow »**.
 

@@ -5,7 +5,8 @@
 #   AMI_REPO     — the friend's fork, e.g. "someone/flonary" (empty = nothing to do)
 #   AMI_BRANCH   — optional, default "main"
 # Repository secrets: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID (same as deploy.yml),
-#   AMI_SECRETS_KEY (→ SECRETS_KEY of the friend's Worker), GOOGLE_CLIENT_ID/SECRET (optional).
+#   AMI_SECRETS_KEY (optional → SECRETS_KEY of the friend's Worker; default: derived one-way from
+#   SECRETS_KEY), GOOGLE_CLIENT_ID/SECRET (optional).
 #
 # Security model:
 #   - job "build" runs the fork's (untrusted) code with NO secrets and a read-only token;
@@ -207,10 +208,19 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          SECRETS_KEY: ${{ secrets.AMI_SECRETS_KEY }}
+          AMI_SECRETS_KEY: ${{ secrets.AMI_SECRETS_KEY }}
+          BASE_SECRETS_KEY: ${{ secrets.SECRETS_KEY }}
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
-        run: node scripts/sync-secrets.mjs --config site/wrangler.json
+        run: |
+          # The friend's site gets its own encryption key. Without an explicit AMI_SECRETS_KEY it is
+          # derived one-way from Guillaume's SECRETS_KEY (the friend's site cannot recover the original).
+          if [ -n "$AMI_SECRETS_KEY" ]; then
+            export SECRETS_KEY="$AMI_SECRETS_KEY"
+          elif [ -n "$BASE_SECRETS_KEY" ]; then
+            export SECRETS_KEY="$(printf 'flonary-ami:%s' "$BASE_SECRETS_KEY" | sha256sum | cut -d' ' -f1)"
+          fi
+          node scripts/sync-secrets.mjs --config site/wrangler.json
 
       - name: Remember the deployed commit
         run: mkdir -p .ami-deployed && echo "${{ needs.build.outputs.sha }}" > .ami-deployed/sha
