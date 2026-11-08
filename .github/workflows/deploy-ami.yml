@@ -14,13 +14,12 @@
 #   - job "deploy" holds the secrets but runs only this repo's scripts + a pinned wrangler on
 #     the build output; its wrangler config is generated here (scripts/ami-wrangler-config.mjs),
 #     so the fork cannot bind other Workers/databases. Migrations only reach `flonary-ami`.
-# Fully automatic: every 5 minutes the fork is checked and, if its main branch has a new commit,
-# it is built and deployed. Runs with nothing new end in seconds (free on public repos).
+# Triggered by the friend's fork itself: on every push to its main branch, the fork's workflow
+# .github/workflows/notify-deploy.yml calls this workflow through the GitHub API with a token
+# limited to "Actions: read & write" on this repository (it cannot read secrets or push code).
 # It can also be run by hand: Actions → Deploy ami → Run workflow.
 name: Deploy ami
 on:
-  schedule:
-    - cron: '*/5 * * * *'
   workflow_dispatch:
     inputs:
       force:
@@ -36,19 +35,6 @@ env:
   WRANGLER_PKG: wrangler@4.157.0
 
 jobs:
-  # GitHub pauses scheduled workflows after 60 days without activity in this repository.
-  # Re-enabling the workflow through the API resets that timer. Isolated job: no checkout,
-  # no third-party code, only this permission.
-  keepalive:
-    runs-on: ubuntu-latest
-    permissions:
-      actions: write
-    steps:
-      - name: Keep the schedule alive
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/deploy-ami.yml/enable" || true
-
   build:
     runs-on: ubuntu-latest
     permissions:

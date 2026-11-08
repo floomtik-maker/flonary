@@ -1,0 +1,36 @@
+# Runs in the friend's fork (floomtik-maker/flonary), not in Guillaume's repository.
+# On every push to main it asks Guillaume's repository to deploy the friend's site
+# (https://flonary-ami.guillaume-astesana.workers.dev). The fork never holds any Cloudflare key:
+# the secret DEPLOY_TRIGGER_TOKEN only allows starting Guillaume's "Deploy ami" workflow.
+#
+# Fork setup (once): Actions tab → "I understand my workflows, go ahead and enable them";
+# Settings → Secrets and variables → Actions → New repository secret DEPLOY_TRIGGER_TOKEN
+# (token given by Guillaume).
+name: Notify deploy
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions: {}
+jobs:
+  notify:
+    # Never runs in Guillaume's own repository (its site deploys with deploy.yml).
+    if: github.repository != 'guillaumeast/flonary'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ask Guillaume's repository to deploy this site
+        env:
+          TOKEN: ${{ secrets.DEPLOY_TRIGGER_TOKEN }}
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "::warning::Secret DEPLOY_TRIGGER_TOKEN missing: ask Guillaume for it (docs/MISE-EN-LIGNE.md, part B)."
+            exit 0
+          fi
+          code=$(curl -sS -o /tmp/resp.txt -w '%{http_code}' -X POST \
+            -H "Authorization: Bearer $TOKEN" -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/guillaumeast/flonary/actions/workflows/deploy-ami.yml/dispatches \
+            -d '{"ref":"main"}')
+          if [ "$code" != "204" ]; then
+            echo "::error::Deployment request refused (HTTP $code): $(cat /tmp/resp.txt)"; exit 1
+          fi
+          echo "Deployment requested: the site will be updated in 2-3 minutes."

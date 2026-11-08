@@ -54,25 +54,29 @@ Ouvre l'adresse, clique sur **« Créer un compte »**. **Chacun crée son propr
 
 ## B. La version de l'ami, hébergée chez Guillaume
 
-L'ami a sa propre copie du code (un « fork »), modifiée par son agent IA, et son propre site avec sa propre base de données (`flonary-ami`, **déjà créée**). La mise en ligne est faite par le dépôt de Guillaume : l'ami ne reçoit **jamais** la clé Cloudflare de Guillaume et ne peut toucher à rien d'autre.
+L'ami a sa propre copie du code (un « fork » : `floomtik-maker/flonary`), modifiée par son agent IA, et son propre site avec sa propre base de données (`flonary-ami`, déjà créée) : **https://flonary-ami.guillaume-astesana.workers.dev**.
 
-**Côté ami (une seule fois)**
+**Comment ça marche.** À chaque modification poussée sur `main` de son fork, son fork demande automatiquement au dépôt de Guillaume de mettre son site à jour (2 à 3 minutes). Personne n'a rien à faire. Le fork n'a **jamais** la clé Cloudflare de Guillaume : il a seulement une clé GitHub qui sert à *déclencher* cette mise en ligne.
 
-1. Connecté à GitHub, ouvre https://github.com/guillaumeast/flonary et clique sur **« Fork »** (en haut à droite) → **« Create fork »**.
-2. Envoie à Guillaume le nom de ton fork, par exemple `ton-pseudo/flonary`. Rien d'autre à configurer (pas de secret, pas d'onglet Actions à activer).
+**Côté Guillaume (une seule fois, déjà fait : variable `FLOOM_REPO` = `floomtik-maker/flonary`)** — créer la clé de déclenchement :
 
-**Côté Guillaume (une seule fois)**
+1. Ouvre https://github.com/settings/personal-access-tokens/new
+2. **Token name** : `Flonary déploiement ami`.
+3. **Expiration** : **No expiration** si proposé, sinon la durée la plus longue.
+4. **Repository access** : **Only select repositories** → choisis `guillaumeast/flonary`.
+5. **Permissions** → **Repository permissions** → **Actions** : **Read and write**. Ne touche à rien d'autre.
+6. Clique sur **Generate token**, copie la clé et envoie-la à l'ami par message privé.
 
-3. Dans ton dépôt `guillaumeast/flonary` : **« Settings »** → menu de gauche **« Secrets and variables »** → **« Actions »** :
-   - onglet **« Variables »** → **« New repository variable »** → Name `FLOOM_REPO`, Value `floomtik-maker/flonary` (le nom envoyé par l'ami) → **« Add variable »** ;
+Cette clé permet seulement de lancer (ou relancer) les mises en ligne de ce dépôt : elle ne peut ni lire tes secrets, ni modifier ton code, ni toucher à Cloudflare.
 
-**Ensuite, tout est automatique.** Le dépôt de Guillaume vérifie le fork toutes les 5 minutes : dès que l'ami (ou son agent) pousse sur la branche `main` de son fork, le site **https://flonary-ami.guillaume-astesana.workers.dev** est mis à jour, en général en moins de 10 minutes (GitHub retarde parfois un peu les tâches planifiées). Personne n'a rien à faire. Pour forcer une mise en ligne immédiate : dépôt de Guillaume → **« Actions »** → **« Deploy ami »** → **« Run workflow »**.
+**Côté ami (une seule fois, son agent le guide)**
 
-L'ami ouvre ensuite l'adresse, clique sur **« Créer un compte »**, et saisit sa clé de cours de bourse dans l'application (partie C).
+1. Forker https://github.com/guillaumeast/flonary (bouton **Fork** → **Create fork**).
+2. Dans son fork, onglet **Actions** → cliquer **I understand my workflows, go ahead and enable them**.
+3. Dans son fork, **Settings** → **Secrets and variables** → **Actions** → **New repository secret** : Name `DEPLOY_TRIGGER_TOKEN`, Secret = la clé envoyée par Guillaume → **Add secret**.
+4. Pousser un premier changement sur `main` (son agent le fait) : le site se met en ligne 2 à 3 minutes après.
 
-Bon à savoir :
-- Autre branche que `main` chez l'ami : ajouter une variable `AMI_BRANCH`.
-- Le site de l'ami utilise toujours le Worker `flonary-ami` et la base `flonary-ami`, quel que soit le contenu de son `wrangler.toml` (ignoré).
+Bon à savoir : le `wrangler.toml` du fork est ignoré pour son site (Worker et base `flonary-ami` imposés par le dépôt de Guillaume). Mise en ligne manuelle possible : dépôt de Guillaume → **Actions** → **Deploy ami** → **Run workflow**.
 
 ---
 
