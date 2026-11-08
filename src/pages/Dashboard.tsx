@@ -5,6 +5,7 @@ import { useUpcomingEvents } from '../lib/useEvents';
 import { periodPerformance, type PeriodKey } from '../../shared/portfolio';
 import { PerformanceChart } from '../components/PerformanceChart';
 import { Avatar, Gain, PageLoading, Segmented } from '../components/ui';
+import { PageHeader } from '../components/PageHeader';
 import { BROKER_LABELS, dateNoYear, eur, pct, signedPct } from '../lib/format';
 import { Welcome } from './Welcome';
 import { BENCHMARK_LABEL, simulateBenchmark } from '../../shared/benchmark';
@@ -39,12 +40,14 @@ export function Dashboard() {
 
   return (
     <>
-      <div className="page-head">
-        <h1>Synthèse</h1>
-        <Link className="btn primary" to="/mouvements?new=1">
-          + Opération
-        </Link>
-      </div>
+      <PageHeader
+        title="Synthèse"
+        actions={
+          <Link className="btn primary" to="/mouvements?new=1">
+            + Opération
+          </Link>
+        }
+      />
       <div className="grid grid-main">
         <div className="stack">
           <section className="card">

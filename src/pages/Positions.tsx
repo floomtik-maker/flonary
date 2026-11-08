@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { usePortfolio } from '../lib/usePortfolio';
 import { Avatar, Gain, PageLoading, Segmented } from '../components/ui';
+import { PageHeader } from '../components/PageHeader';
 import { eur, money, pct, qty } from '../lib/format';
 
 export function Positions() {
@@ -15,17 +16,19 @@ export function Positions() {
 
   return (
     <>
-      <div className="page-head">
-        <h1>Positions</h1>
-        <Segmented
-          value={tab}
-          onChange={setTab}
-          options={[
-            { value: 'open', label: `En portefeuille (${positions.length})` },
-            { value: 'closed', label: `Vendues (${closedPositions.length})` },
-          ]}
-        />
-      </div>
+      <PageHeader
+        title="Positions"
+        actions={
+          <Segmented
+            value={tab}
+            onChange={setTab}
+            options={[
+              { value: 'open', label: `En portefeuille (${positions.length})` },
+              { value: 'closed', label: `Vendues (${closedPositions.length})` },
+            ]}
+          />
+        }
+      />
 
       {tab === 'open' ? (
         <section className="card" style={{ padding: 8 }}>

@@ -6,6 +6,7 @@ import { usePortfolio } from '../lib/usePortfolio';
 import type { Account, Broker } from '../../shared/types';
 import type { UserData } from '../api/backend';
 import { Gain, Modal, PageLoading } from '../components/ui';
+import { PageHeader } from '../components/PageHeader';
 import { ImportWizard } from '../components/ImportWizard';
 import { IconLink, IconPlus, IconRefresh, IconTrash, IconUpload } from '../components/Icons';
 import { BROKER_LABELS, date, eur } from '../lib/format';
@@ -35,17 +36,19 @@ export function Accounts() {
 
   return (
     <>
-      <div className="page-head">
-        <h1>Comptes & connexions</h1>
-        <div className="toolbar">
-          <button className="btn" disabled={data.accounts.length === 0} onClick={() => setImporting(true)}>
-            <IconUpload width={16} height={16} /> Importer un fichier
-          </button>
-          <button className="btn primary" onClick={() => setEditing({ broker: 'other', kind: 'CTO', name: '' })}>
-            <IconPlus width={16} height={16} /> Nouveau compte
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title="Comptes & connexions"
+        actions={
+          <>
+            <button className="btn" disabled={data.accounts.length === 0} onClick={() => setImporting(true)}>
+              <IconUpload width={16} height={16} /> Importer un fichier
+            </button>
+            <button className="btn primary" onClick={() => setEditing({ broker: 'other', kind: 'CTO', name: '' })}>
+              <IconPlus width={16} height={16} /> Nouveau compte
+            </button>
+          </>
+        }
+      />
 
       <div className="grid grid-main">
         <div className="stack">

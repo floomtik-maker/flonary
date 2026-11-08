@@ -6,6 +6,7 @@ import { regionOf } from '../../shared/geo';
 import { computeTax, envelopeOf, isTaxableEachYear } from '../../shared/tax';
 import { addMonths } from '../../shared/series';
 import { BarList, Empty, PageLoading, Segmented } from '../components/ui';
+import { PageHeader } from '../components/PageHeader';
 import { ASSET_CLASS_LABELS, BROKER_LABELS, eur, pct, signedEur, signedPct, tone } from '../lib/format';
 
 type Dim = 'region' | 'country' | 'sector' | 'asset' | 'currency' | 'account';
@@ -113,9 +114,7 @@ export function Analysis() {
   const riskCls = riskClass(analysis.vol);
   return (
     <>
-      <div className="page-head">
-        <h1>Analyse</h1>
-      </div>
+      <PageHeader title="Analyse" />
       <div className="grid grid-main">
         <div className="stack">
           <section className="card">
