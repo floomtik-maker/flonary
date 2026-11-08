@@ -114,8 +114,10 @@ export function parseDate(v: string | undefined): string | null {
 
 export function parseType(v: string | undefined, quantity: number, amount: number): TxType | null {
   const s = norm(v ?? '');
-  if (/^(buy|achat|acheter|kauf|b|a|souscription|savings plan|plan d'investissement|versement libre investi)/.test(s) || s.includes('achat') || s === 'bot') return 'BUY';
-  if (/^(sell|vente|vendre|verkauf|s|v|rachat|sld)/.test(s) || s.includes('vente')) return 'SELL';
+  // Multi-letter labels match by prefix; single-letter abbreviations only by exact equality
+  // (otherwise "Versement" would read as "v" = SELL, "Dividende"/"Retrait" etc. at risk too).
+  if (/^(?:buy|achat|acheter|kauf|souscription|savings plan|plan d'investissement|versement libre investi)/.test(s) || /^[ab]$/.test(s) || s.includes('achat') || s === 'bot') return 'BUY';
+  if (/^(?:sell|vente|vendre|verkauf|rachat|sld)/.test(s) || /^[sv]$/.test(s) || s.includes('vente')) return 'SELL';
   if (/(dividend|dividende|coupon|ausschüttung|distribution|interest|intérêt|zinsen)/.test(s)) return 'DIVIDEND';
   if (/(deposit|dépôt|depot|versement|virement entrant|einzahlung)/.test(s)) return 'DEPOSIT';
   if (/(withdraw|retrait|removal|auszahlung|virement sortant)/.test(s)) return 'WITHDRAWAL';

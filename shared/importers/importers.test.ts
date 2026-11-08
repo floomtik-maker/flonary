@@ -67,6 +67,22 @@ describe('CSV', () => {
     const r = parseIbkrCsv(rows);
     expect(r.transactions[0]).toMatchObject({ symbol: 'MC.PA', quantity: 3, price: 700, fees: 3, type: 'BUY' });
   });
+  it('classifies type labels; single letters only match exactly', () => {
+    const csv = [
+      'date;type;symbol;quantity;price;currency;amount',
+      '2026-01-02;Versement;;;;EUR;1676.98',
+      '2026-01-03;Retrait;;;;EUR;-100',
+      '2026-01-04;Dividende;AAPL;;;EUR;5',
+      '2026-01-05;Vente;AAPL;1;10;EUR;',
+      '2026-01-06;V;AAPL;1;10;EUR;',
+      '2026-01-07;A;AAPL;1;10;EUR;',
+      '2026-01-08;Achat;AAPL;1;10;EUR;',
+    ].join('\n');
+    const rows = parseCsv(csv);
+    const out = rowsToTransactions(rows.slice(1), detectMapping(rows[0]));
+    expect(out.map((o) => o.error)).toEqual(Array(7).fill(undefined));
+    expect(out.map((o) => o.tx!.type)).toEqual(['DEPOSIT', 'WITHDRAWAL', 'DIVIDEND', 'SELL', 'SELL', 'BUY', 'BUY']);
+  });
   it('reports bad rows', () => {
     const rows = parseCsv('date,type,symbol,quantity,price\nxx,buy,AAPL,1,1\n2025-01-01,???,AAPL,1,1\n2025-01-01,buy,AAPL,,1');
     const out = rowsToTransactions(rows.slice(1), detectMapping(rows[0]));
