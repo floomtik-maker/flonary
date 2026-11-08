@@ -66,7 +66,7 @@ L'ami a sa propre copie du code (un « fork »), modifiée par son agent IA, et 
 3. Dans ton dépôt `guillaumeast/flonary` : **« Settings »** → menu de gauche **« Secrets and variables »** → **« Actions »** :
    - onglet **« Variables »** → **« New repository variable »** → Name `FLOOM_REPO`, Value `floomtik-maker/flonary` (le nom envoyé par l'ami) → **« Add variable »** ;
 
-**Mise en ligne : à la demande.** Quand l'ami (ou son agent) a poussé ses changements sur la branche `main` de son fork, il envoie un message à Guillaume, qui ouvre son dépôt → onglet **« Actions »** → **« Deploy ami »** (à gauche) → **« Run workflow »** → **« Run workflow »**. Le site **https://flonary-ami.guillaume-astesana.workers.dev** est à jour 2 à 3 minutes plus tard.
+**Ensuite, tout est automatique.** Le dépôt de Guillaume vérifie le fork toutes les 5 minutes : dès que l'ami (ou son agent) pousse sur la branche `main` de son fork, le site **https://flonary-ami.guillaume-astesana.workers.dev** est mis à jour, en général en moins de 10 minutes (GitHub retarde parfois un peu les tâches planifiées). Personne n'a rien à faire. Pour forcer une mise en ligne immédiate : dépôt de Guillaume → **« Actions »** → **« Deploy ami »** → **« Run workflow »**.
 
 L'ami ouvre ensuite l'adresse, clique sur **« Créer un compte »**, et saisit sa clé de cours de bourse dans l'application (partie C).
 
