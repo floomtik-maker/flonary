@@ -14,12 +14,9 @@
 #   - job "deploy" holds the secrets but runs only this repo's scripts + a pinned wrangler on
 #     the build output; its wrangler config is generated here (scripts/ami-wrangler-config.mjs),
 #     so the fork cannot bind other Workers/databases. Migrations only reach `flonary-ami`.
-# Note: `schedule` only runs from the default branch (main).
+# Manual only: Guillaume runs it (Actions → Deploy ami → Run workflow) when the friend asks.
 name: Deploy ami
 on:
-  schedule:
-    # Checks the fork every 10 min; a run with nothing new exits in seconds (free on public repos).
-    - cron: '*/10 * * * *'
   workflow_dispatch:
     inputs:
       force:

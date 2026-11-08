@@ -66,12 +66,11 @@ L'ami a sa propre copie du code (un « fork »), modifiée par son agent IA, et 
 3. Dans ton dépôt `guillaumeast/flonary` : **« Settings »** → menu de gauche **« Secrets and variables »** → **« Actions »** :
    - onglet **« Variables »** → **« New repository variable »** → Name `FLOOM_REPO`, Value `floomtik-maker/flonary` (le nom envoyé par l'ami) → **« Add variable »** ;
 
-**Ensuite, tout est automatique.** Chaque fois que l'ami (ou son agent) pousse sur la branche `main` de son fork, le site **https://flonary-ami.guillaume-astesana.workers.dev** est mis à jour dans les 10 minutes environ. Pour publier tout de suite : dans le dépôt de Guillaume, onglet **« Actions »** → **« Deploy ami »** (à gauche) → **« Run workflow »** → **« Run workflow »**.
+**Mise en ligne : à la demande.** Quand l'ami (ou son agent) a poussé ses changements sur la branche `main` de son fork, il envoie un message à Guillaume, qui ouvre son dépôt → onglet **« Actions »** → **« Deploy ami »** (à gauche) → **« Run workflow »** → **« Run workflow »**. Le site **https://flonary-ami.guillaume-astesana.workers.dev** est à jour 2 à 3 minutes plus tard.
 
 L'ami ouvre ensuite l'adresse, clique sur **« Créer un compte »**, et saisit sa clé de cours de bourse dans l'application (partie C).
 
 Bon à savoir :
-- La vérification « toutes les 10 minutes » ne marche qu'une fois `deploy-ami.yml` présent sur la branche `main` de Guillaume.
 - Autre branche que `main` chez l'ami : ajouter une variable `AMI_BRANCH`.
 - Le site de l'ami utilise toujours le Worker `flonary-ami` et la base `flonary-ami`, quel que soit le contenu de son `wrangler.toml` (ignoré).
 
