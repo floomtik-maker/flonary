@@ -1296,3 +1296,137 @@ textarea.input {
     width: 100%;
   }
 }
+
+/* ---------- View tabs + dense table ---------- */
+.view-bar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px 16px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.tabs {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  max-width: 100%;
+  scrollbar-width: none;
+}
+.tabs::-webkit-scrollbar {
+  display: none;
+}
+.tabs button {
+  border: 0;
+  background: transparent;
+  padding: 8px 14px;
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--text-3);
+  cursor: pointer;
+  white-space: nowrap;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+.tabs button:hover {
+  color: var(--text);
+}
+.tabs button.on {
+  color: var(--text);
+  border-bottom-color: var(--ink);
+}
+.card.table-card {
+  padding: 4px 8px 8px;
+}
+.table.dense {
+  font-size: 13.5px;
+}
+.table.dense th,
+.table.dense td {
+  padding: 9px 10px;
+}
+.table.dense tfoot td {
+  border-top: 1px solid var(--border);
+  border-bottom: 0;
+  font-weight: 600;
+  color: var(--text-2);
+}
+.table.dense tbody tr.click:focus-visible {
+  outline-offset: -2px;
+}
+.th-sort {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+.th-sort:hover {
+  color: var(--text);
+}
+.th-sort .arrow {
+  font-size: 9px;
+  min-width: 9px;
+  color: var(--text);
+}
+.table.dense th[aria-sort='ascending'],
+.table.dense th[aria-sort='descending'] {
+  color: var(--text);
+}
+/* first column stays visible when the table scrolls sideways */
+.table.dense th:first-child,
+.table.dense td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--surface);
+}
+.table.dense tbody tr.click:hover td:first-child {
+  background: var(--surface-2);
+}
+.cell-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 170px;
+}
+.cell-title-text {
+  min-width: 0;
+}
+.cell-name {
+  font-weight: 600;
+  max-width: 230px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.table-note {
+  margin: 10px 10px 4px;
+}
+.table.dense .small {
+  font-size: 12px;
+}
+@media (max-width: 860px) {
+  .card.table-card {
+    padding: 0 0 6px;
+  }
+  .cell-title {
+    min-width: 0;
+  }
+  .cell-title .avatar {
+    display: none;
+  }
+  .cell-title-text {
+    max-width: 140px;
+  }
+  .cell-title-text > * {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .cell-name {
+    max-width: none;
+  }
+}
