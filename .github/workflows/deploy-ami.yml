@@ -2,7 +2,8 @@
 # Cloudflare account. The friend never gets the Cloudflare token: it only lives here.
 #
 # Repository variables (Settings → Secrets and variables → Actions → Variables):
-#   AMI_REPO     — the friend's fork, e.g. "someone/flonary" (empty = nothing to do)
+#   FLOOM_REPO   — the friend's fork, e.g. "floomtik-maker/flonary" (empty = nothing to do;
+#                  AMI_REPO is accepted as a fallback name)
 #   AMI_BRANCH   — optional, default "main"
 # Repository secrets: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID (same as deploy.yml),
 #   AMI_SECRETS_KEY (optional → SECRETS_KEY of the friend's Worker; default: derived one-way from
@@ -17,7 +18,8 @@
 name: Deploy ami
 on:
   schedule:
-    - cron: '*/30 * * * *'
+    # Checks the fork every 10 min; a run with nothing new exits in seconds (free on public repos).
+    - cron: '*/10 * * * *'
   workflow_dispatch:
     inputs:
       force:
@@ -44,20 +46,26 @@ jobs:
       - name: Read settings
         id: cfg
         env:
-          AMI_REPO: ${{ vars.AMI_REPO }}
+          AMI_REPO: ${{ vars.FLOOM_REPO || vars.AMI_REPO }}
           AMI_BRANCH: ${{ vars.AMI_BRANCH }}
+          GIT_TERMINAL_PROMPT: '0'
         run: |
           repo="$(echo "$AMI_REPO" | tr -d '[:space:]')"
           branch="$(echo "${AMI_BRANCH:-main}" | tr -d '[:space:]')"
           if [ -z "$repo" ]; then
-            echo "::notice::Variable AMI_REPO is not set: nothing to deploy (see docs/MISE-EN-LIGNE.md, part B)."
+            echo "::notice::Variable FLOOM_REPO is not set: nothing to deploy (see docs/MISE-EN-LIGNE.md, part B)."
             echo "ok=false" >> "$GITHUB_OUTPUT"; exit 0
           fi
           if ! [[ "$repo" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]]; then
-            echo "::error::AMI_REPO must look like owner/repo (got '$repo')."; exit 1
+            echo "::error::FLOOM_REPO must look like owner/repo (got '$repo')."; exit 1
           fi
           if ! [[ "$branch" =~ ^[A-Za-z0-9_./-]+$ ]]; then
             echo "::error::Invalid AMI_BRANCH '$branch'."; exit 1
+          fi
+          # Before the friend has forked, exit quietly (no failure e-mail every 10 minutes).
+          if ! git ls-remote --exit-code --heads "https://github.com/$repo.git" "$branch" >/dev/null 2>&1; then
+            echo "::notice::$repo (branch $branch) does not exist yet: nothing to deploy."
+            echo "ok=false" >> "$GITHUB_OUTPUT"; exit 0
           fi
           echo "repo=$repo" >> "$GITHUB_OUTPUT"
           echo "branch=$branch" >> "$GITHUB_OUTPUT"
